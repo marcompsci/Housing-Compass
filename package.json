@@ -1,0 +1,36 @@
+{
+  "name": "housing-compass",
+  "private": true,
+  "version": "0.13.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test -w @housing-compass/core",
+    "typecheck": "npm run typecheck -w @housing-compass/core && npm run typecheck -w @housing-compass/app",
+    "seed:build": "tsx scripts/build-seed.ts",
+    "db:test": "bash scripts/db-test.sh",
+    "web:export": "npm run export:web -w @housing-compass/app",
+    "e2e": "node scripts/e2e-screenshots.mjs",
+    "postinstall": "node scripts/copy-maplibre-worker.mjs",
+    "edge:check": "cd supabase/functions && deno check --config deno.json ingest/index.ts notify/index.ts health/index.ts",
+    "links:check": "tsx scripts/check-links.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "topojson-client": "^3.1.0",
+    "tsx": "^4.23.15",
+    "us-atlas": "^3.0.1",
+    "zipcodes": "^8.0.0",
+    "playwright": "^1.50.0"
+  },
+  "description": "Housing Compass \u2014 find affordable homes in the Bay Area and Los Angeles without getting scammed",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcompsci/Housing-Compass.git"
+  },
+  "homepage": "https://github.com/marcompsci/Housing-Compass#housing-compass"
+}

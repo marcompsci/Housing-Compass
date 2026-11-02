@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Housing Compass",
+    "slug": "housing-compass",
+    "scheme": "housingcompass",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.phoronomicstudios.housingcompass",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Housing Compass uses your approximate location once to show homes near you. It is not stored on our servers."
+      },
+      "appleTeamId": "X6LZQ3FS36"
+    },
+    "android": {
+      "package": "com.phoronomicstudios.housingcompass",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "blockedPermissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0B6E5F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Housing Compass uses your approximate location once to show homes near you. It is not stored on our servers.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      "@maplibre/maplibre-react-native",
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
