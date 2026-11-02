@@ -1,6 +1,7 @@
 import { HARD_MAX_CEILING_CENTS, findCity, formatUsd, type BudgetPrefs } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
+import { useT } from "../i18n";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Button, Chip, Section } from "../components/ui";
 import { now } from "../config";
@@ -40,6 +41,7 @@ function Toggle({ label, value, onChange, hint }: { label: string; value: boolea
 const plusDays = (d: number) => new Date(now().getTime() + d * 86_400_000).toISOString().slice(0, 10);
 
 export default function Filters() {
+  const { t } = useT();
   const f = useStore((s) => s.filters);
   const patch = useStore((s) => s.patchFilters);
   const setBudget = useStore((s) => s.setBudget);
@@ -53,72 +55,72 @@ export default function Filters() {
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-      <Section title="Budget">
-        <Text style={type.small}>Rooms and shared housing</Text>
-        <Stepper label="Minimum" cents={b.roomMinCents} min={0} max={b.roomMaxCents} onChange={(v) => setB({ roomMinCents: v })} />
-        <Stepper label="Maximum" cents={b.roomMaxCents} min={b.roomMinCents} max={HARD_MAX_CEILING_CENTS} onChange={(v) => setB({ roomMaxCents: v })} />
-        <Text style={[type.small, { marginTop: 8 }]}>Entire studios & 1-bedrooms</Text>
-        <Stepper label="Preferred up to" cents={b.unitPreferredMaxCents} min={50000} max={b.unitHardMaxCents} onChange={(v) => setB({ unitPreferredMaxCents: v })} />
-        <Stepper label="Hard maximum" cents={b.unitHardMaxCents} min={b.unitPreferredMaxCents} max={HARD_MAX_CEILING_CENTS} onChange={(v) => setB({ unitHardMaxCents: v })} />
-        <Text style={type.tiny}>Budgets use the all-in monthly cost (rent + mandatory fees) whenever fees are known; otherwise advertised rent, labeled as such. Homes between your preference and hard maximum are labeled. Nothing above {formatUsd(HARD_MAX_CEILING_CENTS)} is ever shown.</Text>
+      <Section title={t("f.budget")}>
+        <Text style={type.small}>{t("f.rooms")}</Text>
+        <Stepper label={t("f.min")} cents={b.roomMinCents} min={0} max={b.roomMaxCents} onChange={(v) => setB({ roomMinCents: v })} />
+        <Stepper label={t("f.max")} cents={b.roomMaxCents} min={b.roomMinCents} max={HARD_MAX_CEILING_CENTS} onChange={(v) => setB({ roomMaxCents: v })} />
+        <Text style={[type.small, { marginTop: 8 }]}>{t("f.units")}</Text>
+        <Stepper label={t("f.prefUpTo")} cents={b.unitPreferredMaxCents} min={50000} max={b.unitHardMaxCents} onChange={(v) => setB({ unitPreferredMaxCents: v })} />
+        <Stepper label={t("f.hardMax")} cents={b.unitHardMaxCents} min={b.unitPreferredMaxCents} max={HARD_MAX_CEILING_CENTS} onChange={(v) => setB({ unitHardMaxCents: v })} />
+        <Text style={type.tiny}>{t("f.budgetNote", { max: formatUsd(HARD_MAX_CEILING_CENTS) })}</Text>
       </Section>
 
-      <Section title="Must-haves">
-        <Toggle label="Pets allowed" value={f.petsRequired} onChange={(v) => patch({ petsRequired: v })} />
-        <Toggle label="Utilities included" value={f.utilitiesIncludedRequired} onChange={(v) => patch({ utilitiesIncludedRequired: v })} />
-        <Toggle label="Parking" value={f.parkingRequired} onChange={(v) => patch({ parkingRequired: v })} />
-        <Toggle label="Accepts housing vouchers (confirmed)" value={f.vouchersRequired} onChange={(v) => patch({ vouchersRequired: v })} hint="In California, refusing voucher holders is generally unlawful — this shows homes where acceptance has been confirmed." />
-        <Toggle label="Transit within a 10-minute walk" value={f.maxTransitWalkMinutes !== null} onChange={(v) => patch({ maxTransitWalkMinutes: v ? 10 : null })} />
-        <Toggle label="Accessibility features" value={f.accessibilityRequired} onChange={(v) => patch({ accessibilityRequired: v })} hint="Wheelchair access, step-free entry, elevator…" />
-        <Text style={type.small}>Furnished</Text>
+      <Section title={t("f.mustHaves")}>
+        <Toggle label={t("f.pets")} value={f.petsRequired} onChange={(v) => patch({ petsRequired: v })} />
+        <Toggle label={t("f.utilities")} value={f.utilitiesIncludedRequired} onChange={(v) => patch({ utilitiesIncludedRequired: v })} />
+        <Toggle label={t("f.parking")} value={f.parkingRequired} onChange={(v) => patch({ parkingRequired: v })} />
+        <Toggle label={t("f.vouchers")} value={f.vouchersRequired} onChange={(v) => patch({ vouchersRequired: v })} hint={t("f.vouchersHint")} />
+        <Toggle label={t("f.transit")} value={f.maxTransitWalkMinutes !== null} onChange={(v) => patch({ maxTransitWalkMinutes: v ? 10 : null })} />
+        <Toggle label={t("f.access")} value={f.accessibilityRequired} onChange={(v) => patch({ accessibilityRequired: v })} hint={t("f.accessHint")} />
+        <Text style={type.small}>{t("f.furnished")}</Text>
         <View style={styles.row}>
           {(["any", "furnished", "unfurnished"] as const).map((v) => (
-            <Chip key={v} label={v === "any" ? "Any" : v[0]!.toUpperCase() + v.slice(1)} selected={f.furnished === v} onPress={() => patch({ furnished: v })} />
+            <Chip key={v} label={v === "any" ? t("f.any") : v === "furnished" ? t("f.furnishedYes") : t("f.unfurnished")} selected={f.furnished === v} onPress={() => patch({ furnished: v })} />
           ))}
         </View>
-        <Text style={type.small}>Lease I can commit to</Text>
+        <Text style={type.small}>{t("f.lease")}</Text>
         <View style={styles.row}>
           {[null, 1, 6, 12].map((m) => (
-            <Chip key={String(m)} label={m === null ? "Any" : m === 1 ? "Month-to-month" : `≤ ${m} months`} selected={f.maxMinLeaseMonths === m} onPress={() => patch({ maxMinLeaseMonths: m })} />
+            <Chip key={String(m)} label={m === null ? t("f.any") : m === 1 ? t("f.monthToMonth") : t("f.upToMonths", { n: m })} selected={f.maxMinLeaseMonths === m} onPress={() => patch({ maxMinLeaseMonths: m })} />
           ))}
         </View>
-        <Text style={type.small}>Move in by</Text>
+        <Text style={type.small}>{t("f.moveInBy")}</Text>
         <View style={styles.row}>
           {[null, 14, 30, 60].map((d) => (
-            <Chip key={String(d)} label={d === null ? "Any time" : `Within ${d} days`} selected={d === null ? f.moveInBy === null : f.moveInBy === plusDays(d)} onPress={() => patch({ moveInBy: d === null ? null : plusDays(d) })} />
+            <Chip key={String(d)} label={d === null ? t("f.anyTime") : t("f.withinDays", { n: d })} selected={d === null ? f.moveInBy === null : f.moveInBy === plusDays(d)} onPress={() => patch({ moveInBy: d === null ? null : plusDays(d) })} />
           ))}
         </View>
         <Toggle
-          label="Also show possible matches (not confirmed)"
+          label={t("f.possible")}
           value={f.includeUnconfirmedMatches}
           onChange={(v) => patch({ includeUnconfirmedMatches: v })}
-          hint="Off by default: unknown is never treated as yes. Turn on to also see homes where a must-have isn't confirmed — they're labeled."
+          hint={t("f.possibleHint")}
         />
       </Section>
 
-      <Section title="Distance & commute">
-        <Text style={type.small}>Search radius from your search area</Text>
+      <Section title={t("f.distance")}>
+        <Text style={type.small}>{t("f.radius")}</Text>
         <View style={styles.row}>
           {[null, 10, 25, 50].map((r) => (
-            <Chip key={String(r)} label={r === null ? "Whole region" : `${Math.round(r * 0.621)} mi`} selected={f.radiusKm === r} onPress={() => patch({ radiusKm: r })} />
+            <Chip key={String(r)} label={r === null ? t("f.wholeRegion") : `${Math.round(r * 0.621)} mi`} selected={f.radiusKm === r} onPress={() => patch({ radiusKm: r })} />
           ))}
         </View>
-        <Text style={type.small}>Commute destination (city)</Text>
+        <Text style={type.small}>{t("f.commute")}</Text>
         <View style={{ flexDirection: "row", gap: 8 }}>
           <TextInput
             value={commuteText}
             onChangeText={(t) => { setCommuteText(t); setCommuteError(""); }}
-            placeholder="e.g. San Francisco"
+            placeholder={t("f.commutePh")}
             style={styles.input}
-            accessibilityLabel="Commute destination city"
+            accessibilityLabel={t("f.commute")}
             autoCapitalize="words"
           />
           <Button
-            label="Set"
+            label={t("f.set")}
             kind="secondary"
             onPress={() => {
               const c = findCity(commuteText);
-              if (!c) return setCommuteError("Pick a Bay Area city (street addresses need a geocoder — coming in Phase 3).");
+              if (!c) return setCommuteError(t("f.commuteError"));
               patch({ commuteTo: { lat: c.lat, lng: c.lng }, maxCommuteKm: f.maxCommuteKm });
             }}
           />
@@ -128,41 +130,42 @@ export default function Filters() {
           <>
             <View style={styles.row}>
               {[null, 10, 20, 40].map((k) => (
-                <Chip key={String(k)} label={k === null ? "Any distance" : `≤ ${Math.round(k * 0.621)} mi`} selected={f.maxCommuteKm === k} onPress={() => patch({ maxCommuteKm: k })} />
+                <Chip key={String(k)} label={k === null ? t("f.anyDistance") : `≤ ${Math.round(k * 0.621)} mi`} selected={f.maxCommuteKm === k} onPress={() => patch({ maxCommuteKm: k })} />
               ))}
-              <Chip label="Clear destination" onPress={() => patch({ commuteTo: null, maxCommuteKm: null })} />
+              <Chip label={t("f.clearDest")} onPress={() => patch({ commuteTo: null, maxCommuteKm: null })} />
             </View>
-            <Text style={type.tiny}>Straight-line distance for now. Real transit and driving times arrive with a routing provider.</Text>
+            <Text style={type.tiny}>{t("f.commuteNote")}</Text>
           </>
         ) : null}
       </Section>
 
-      <Section title="Sort">
+      <Section title={t("f.sort")}>
         <View style={styles.row}>
           {(
             [
-              ["price_asc", "Lowest rent"],
-              ["distance", "Closest"],
-              ["recently_checked", "Recently checked"],
+              ["price_asc", t("f.sortRent")],
+              ["total_monthly", t("f.sortTotal")],
+              ["distance", t("f.sortClosest")],
+              ["recently_checked", t("f.sortChecked")],
             ] as const
           ).map(([v, label]) => (
             <Chip key={v} label={label} selected={f.sort === v} onPress={() => patch({ sort: v })} />
           ))}
         </View>
-        <Text style={type.tiny}>Verified homes always come before unverified leads, and per-bed prices are never sorted among per-room or whole-unit prices.</Text>
+        <Text style={type.tiny}>{t("f.sortNote")}</Text>
       </Section>
 
-      <Section title="Save this search">
+      <Section title={t("f.saveSearch")}>
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <TextInput value={name} onChangeText={setName} placeholder="Name, e.g. East Bay rooms" style={styles.input} accessibilityLabel="Saved search name" maxLength={80} />
-          <Button label="Save" onPress={() => { saveSearch(name.trim() || "My search"); setName(""); router.back(); }} />
+          <TextInput value={name} onChangeText={setName} placeholder={t("f.saveNamePh")} style={styles.input} accessibilityLabel={t("f.saveNamePh")} maxLength={80} />
+          <Button label={t("f.save")} onPress={() => { saveSearch(name.trim() || t("f.mySearch")); setName(""); router.back(); }} />
         </View>
-        <Text style={type.tiny}>Saved on this device. Alerts for new matches arrive with accounts (Phase 3/6).</Text>
+        <Text style={type.tiny}>{t("f.saveNote")}</Text>
       </Section>
 
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button style={{ flex: 1 }} kind="secondary" label="Reset filters" onPress={reset} />
-        <Button style={{ flex: 1 }} label="Show results" onPress={() => router.back()} />
+        <Button style={{ flex: 1 }} kind="secondary" label={t("f.reset")} onPress={reset} />
+        <Button style={{ flex: 1 }} label={t("f.show")} onPress={() => router.back()} />
       </View>
     </ScrollView>
   );

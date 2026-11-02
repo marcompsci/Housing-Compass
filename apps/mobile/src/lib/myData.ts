@@ -10,6 +10,7 @@ import { usePrefs } from "../state/prefs";
 import { usePriceHistory } from "../state/priceHistory";
 import { useStore } from "../state/store";
 import { saveAndShare } from "./files";
+import { useSavedCopies } from "../data/savedCopies";
 
 export async function exportMyData(signedIn: boolean): Promise<string> {
   const s = useStore.getState();
@@ -32,6 +33,8 @@ export async function exportMyData(signedIn: boolean): Promise<string> {
       checklists: p.checklists,
       savings: p.savings,
       household: useHousehold.getState().profile,
+      notes: s.notes,
+      savedAreas: s.savedAreas,
     },
     server,
     now(),
@@ -43,7 +46,8 @@ export async function exportMyData(signedIn: boolean): Promise<string> {
 export async function clearThisDevice(): Promise<void> {
   const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith("housing-compass"));
   await AsyncStorage.multiRemove(keys);
-  useStore.setState({ favorites: [], compare: [], savedSearches: [], reports: [], readNotifications: [], unverifiedWarningAcknowledged: false });
+  useStore.setState({ favorites: [], compare: [], savedSearches: [], reports: [], readNotifications: [], unverifiedWarningAcknowledged: false, notes: {}, savedAreas: [] });
+  useSavedCopies.setState({ docs: {} });
   useApplications.setState({ items: [] });
   useConversations.setState({ threads: [] });
   usePriceHistory.getState().clear();

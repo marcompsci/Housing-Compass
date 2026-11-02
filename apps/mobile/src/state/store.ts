@@ -34,6 +34,13 @@ export interface SavedSearch {
   lastAlertedAt?: string | null;
 }
 
+export interface SavedArea {
+  id: string;
+  name: string;
+  points: LatLng[];
+  createdAt: string;
+}
+
 interface State {
   area: SearchArea;
   filters: SearchFilters;
@@ -62,6 +69,13 @@ interface State {
   toggleSearchAlerts(id: string): void;
   readNotifications: string[];
   markNotificationRead(key: string): void;
+  /** Named drawn areas the user chose to keep (search preferences, not a location history). */
+  savedAreas: SavedArea[];
+  saveArea(name: string, points: LatLng[]): void;
+  deleteArea(id: string): void;
+  /** Private notes on saved homes; stay on this device. */
+  notes: Record<string, string>;
+  setNote(listingId: string, text: string): void;
 }
 
 const DEFAULT_AREA: SearchArea = { label: "San Francisco Bay Area", center: BAY_AREA_CENTER, source: "default", inBayArea: true, region: "bay_area" };
@@ -94,7 +108,10 @@ export const useStore = create<State>()(
       setView: (view) => set({ view }),
       toggleFavorite: (id) => {
         const f = get().favorites;
-        set({ favorites: f.includes(id) ? f.filter((x) => x !== id) : [...f, id] });
+        const removing = f.includes(id);
+        const notes = { ...get().notes };
+        if (removing) delete notes[id];
+        set({ favorites: removing ? f.filter((x) => x !== id) : [...f, id], notes });
       },
       toggleCompare: (id) => {
         const c = get().compare;
@@ -118,6 +135,16 @@ export const useStore = create<State>()(
       acknowledgeUnverified: () => set({ unverifiedWarningAcknowledged: true }),
       markSearchSynced: (localId, serverId) => set({ savedSearches: get().savedSearches.map((x) => (x.id === localId ? { ...x, serverId } : x)) }),
       readNotifications: [],
+      savedAreas: [],
+      saveArea: (name, points) => set({ savedAreas: [{ id: uid(), name: name.trim(), points, createdAt: new Date().toISOString() }, ...get().savedAreas].slice(0, 10) }),
+      deleteArea: (id) => set({ savedAreas: get().savedAreas.filter((a) => a.id !== id) }),
+      notes: {},
+      setNote: (listingId, text) => {
+        const notes = { ...get().notes };
+        if (text.trim()) notes[listingId] = text.slice(0, 1000);
+        else delete notes[listingId];
+        set({ notes });
+      },
       markNotificationRead: (key) => set({ readNotifications: [...new Set([...get().readNotifications, key])].slice(-500) }),
       toggleSearchAlerts: (id) => set({ savedSearches: get().savedSearches.map((x) => (x.id === id ? { ...x, alertsEnabled: !x.alertsEnabled, lastAlertedAt: x.lastAlertedAt ?? new Date().toISOString() } : x)) }),
       markReportSynced: (id) => set({ reports: get().reports.map((r) => (r.id === id ? { ...r, syncedAt: new Date().toISOString() } : r)) }),
@@ -140,6 +167,8 @@ export const useStore = create<State>()(
         reports: s.reports,
         unverifiedWarningAcknowledged: s.unverifiedWarningAcknowledged,
         readNotifications: s.readNotifications,
+        savedAreas: s.savedAreas,
+        notes: s.notes,
       }),
     },
   ),

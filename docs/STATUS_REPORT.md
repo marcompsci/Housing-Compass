@@ -1,4 +1,26 @@
-# Status report — v0.14 (2026-11-02): 20 improvement phases
+# Status report — v0.15 (2026-11-02): 10 more phases
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Know your rights (California) | Deposits (one month for most landlords since July 2024), screening-fee cap and refunds (AB 2493), reusable reports, positive rent reporting to build credit (AB 2747), vouchers as income. Each with its statute link and checked date. Not legal advice. | `core/rights.ts`; Help → Know your rights |
+| 2 | Deposit & fee checks | Listings whose stated deposit is over one (or two) months' rent, or whose application fee is above the 2026 statewide screening-fee cap (about $65.86), get a soft "ask about this" note — never an accusation. | listing → What it costs; Compare |
+| 3 | Keyword search + total-cost sort | Search by street, neighborhood, city or ZIP (accents and case ignored); sort by lowest total monthly cost. | Explore, Filters |
+| 4 | Named saved areas | Save a drawn area ("Near work") and reapply it with one tap on the map. | Explore |
+| 5 | "No longer available" alerts | When a saved home is rented, removed, put under review or expires, people who saved it get an in-app alert (respects alert settings). | `notify_listing_hidden` trigger |
+| 6 | Manager change requests | Verified managers request rent/deposit/fee/move-in/availability changes or mark a home rented; a reviewer (never the requester) approves; approval updates the listing, records price history and alerts savers. | `request_listing_edit`, `decide_listing_edit`; dashboard + Review → Listing edits |
+| 7 | Reports I sent | Each report's status in plain words (saved on device / waiting / being reviewed / action taken / no change). | Account → Reports I sent |
+| 8 | Private notes + offline saved homes | Notes on saved homes (device only, removed when unsaved; shown in Compare). Saved homes open without a connection, re-validated and staleness-checked. | Saved |
+| 9 | Compare upgrades | Application fee, cost checks, and share of income (when "My numbers" is set) rows; your notes under each table. | Compare |
+| 10 | More translations | Filters, account, message checker (including its warnings) and both checklists in Spanish and Simplified Chinese. Legal summaries stay in English on purpose. | `checklistText.ts`, `strings.ts` |
+
+### Tests (all passing)
+- Core: 158 unit tests (13 new)
+- Database: 21 SQL sections (new §21) + 5 contract tests
+- Browser e2e: 73 checks (16 new), screenshots 38–43
+
+---
+
+## Previous: v0.14 (2026-11-02): 20 improvement phases
 
 All 20 phases below are built and tested without credentials. Anything that needs the live backend is wired to real SQL functions (tested on Postgres 16 + PostGIS) and falls back to a clearly labeled demo on the device.
 

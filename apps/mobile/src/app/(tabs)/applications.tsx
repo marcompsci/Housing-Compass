@@ -1,4 +1,4 @@
-import { NEXT_STEP, STATUS_LABEL, applicationDocuments, attention, checklistProgress, nextMoves, sortApplications, type TrackedApplication } from "@housing-compass/core";
+import { NEXT_STEP, STATUS_LABEL, applicationDocuments, attention, localizeChecklist, checklistProgress, nextMoves, sortApplications, type TrackedApplication } from "@housing-compass/core";
 import { Checklist } from "../../components/Checklist";
 import { useListing } from "../../data/hooks";
 import { useT } from "../../i18n";
@@ -28,9 +28,9 @@ function AppCard({ a }: { a: TrackedApplication }) {
   const remove = useApplications((s) => s.remove);
   const [open, setOpen] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
-  const { t } = useT();
+  const { t, locale } = useT();
   const { listing } = useListing(a.listingId);
-  const docs = listing ? applicationDocuments(listing) : [];
+  const docs = listing ? localizeChecklist(applicationDocuments(listing), locale) : [];
   const key = `docs:${a.id}`;
   const ticked = usePrefs((s) => s.checklists[key]) ?? NO_TICKS;
   const toggleCheck = usePrefs((s) => s.toggleCheck);

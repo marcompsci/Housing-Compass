@@ -20,7 +20,9 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { now } from "../config";
 import { openExternal } from "../lib/links";
-import { decideHeld, decideLandlordApp, decideLead, type HeldItem, type LandlordApp, type ReviewMode } from "../review/service";
+import { decideEditRequest, decideHeld, decideLandlordApp, decideLead, type EditRequest, type HeldItem, type LandlordApp, type ReviewMode } from "../review/service";
+import { describeEdit, feeChecks as costChecks } from "@housing-compass/core";
+import { useListing } from "../data/hooks";
 import { HIT, color, radius, space, type } from "../theme";
 import { Banner, Button, Icon, Tag } from "./ui";
 
@@ -205,3 +207,53 @@ const styles = StyleSheet.create({
   checkHead: { flexDirection: "row", gap: 10, alignItems: "flex-start", minHeight: HIT },
   summary: { flexDirection: "row", backgroundColor: color.surface, borderRadius: radius.lg, padding: space.md, borderWidth: 1, borderColor: color.line },
 });
+
+// ───────── Manager edit requests ─────────
+export function EditsTab({ mode, items, onDone }: { mode: ReviewMode; items: EditRequest[]; onDone(id: string): void }) {
+  return (
+    <View style={{ gap: space.md }}>
+      <Text style={type.small}>
+        Managers ask to change rent, fees, move-in date or availability. Confirm with the manager through the contact on record before approving. Approving updates the listing and tells people who saved it about price changes.
+      </Text>
+      {items.length === 0 ? <Text style={type.small}>No change requests.</Text> : null}
+      {items.map((r) => (
+        <EditCard key={r.id} mode={mode} r={r} onDone={() => onDone(r.id)} />
+      ))}
+    </View>
+  );
+}
+
+function EditCard({ mode, r, onDone }: { mode: ReviewMode; r: EditRequest; onDone(): void }) {
+  const { listing: l } = useListing(r.listingId);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const after = l ? costChecks({ address: l.address, pricing: { ...l.pricing, baseRentCents: r.changes.baseRentCents ?? l.pricing.baseRentCents, depositCents: r.changes.depositCents ?? l.pricing.depositCents, applicationFeeCents: r.changes.applicationFeeCents ?? l.pricing.applicationFeeCents } }) : [];
+  const act = async (approve: boolean) => {
+    try {
+      await decideEditRequest(mode, r, approve, reason);
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  return (
+    <View style={styles.item} testID="edit-item">
+      <View style={{ flexDirection: "row", gap: 6 }}>
+        {r.demo ? <Tag label="DEMO" tone="demo" /> : null}
+        <Tag label={new Date(r.createdAt).toLocaleDateString()} />
+      </View>
+      <Text style={type.h3}>{l?.title ?? r.listingTitle}</Text>
+      {l ? describeEdit(l, r.changes).map((d) => <Text key={d} style={type.body}>• {d}</Text>) : null}
+      <Text style={[type.small, styles.quote]}>“{r.note}”</Text>
+      {after.map((c) => (
+        <Text key={c.code} style={[type.tiny, { color: color.warn }]}>⚠ {c.message}</Text>
+      ))}
+      <TextInput value={reason} onChangeText={(t) => { setReason(t); setError(""); }} placeholder="What you confirmed (e.g. 'Called office: new rent from Dec 1')" style={styles.input} accessibilityLabel="Reason for your decision on this change" />
+      {error ? <Text style={[type.tiny, { color: color.danger }]}>{error}</Text> : null}
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Button label="Approve change" onPress={() => void act(true)} disabled={!!neutralLanguageIssue(reason)} />
+        <Button kind="danger" label="Don't approve" onPress={() => void act(false)} disabled={!!neutralLanguageIssue(reason)} />
+      </View>
+    </View>
+  );
+}

@@ -4,8 +4,8 @@ import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { DemoTag, TrustBadge } from "../../components/TrustBadge";
 import { Banner, Tag } from "../../components/ui";
-import { loadHeld, loadLandlordApps, loadLeadQueue, loadQueue, reviewMode, type HeldItem, type LandlordApp, type ReviewMode } from "../../review/service";
-import { HeldTab, LandlordTab, LeadExpiryTab } from "../../components/ReviewTabs";
+import { loadEditRequests, loadHeld, loadLandlordApps, loadLeadQueue, loadQueue, reviewMode, type EditRequest, type HeldItem, type LandlordApp, type ReviewMode } from "../../review/service";
+import { EditsTab, HeldTab, LandlordTab, LeadExpiryTab } from "../../components/ReviewTabs";
 import { Button, Chip } from "../../components/ui";
 import { formatRent, neutralLanguageIssue, type Listing } from "@housing-compass/core";
 import { TextInput } from "react-native";
@@ -15,7 +15,8 @@ import { openExternal } from "../../lib/links";
 export default function ReviewQueue() {
   const [mode, setMode] = useState<ReviewMode | null>(null);
   const [items, setItems] = useState<ReviewQueueItem[]>([]);
-  const [tab, setTab] = useState<"risk" | "leads" | "held" | "landlords">("risk");
+  const [tab, setTab] = useState<"risk" | "leads" | "held" | "landlords" | "edits">("risk");
+  const [edits, setEdits] = useState<EditRequest[]>([]);
   const [leads, setLeads] = useState<Listing[]>([]);
   const [held, setHeld] = useState<HeldItem[]>([]);
   const [apps, setApps] = useState<LandlordApp[]>([]);
@@ -32,6 +33,7 @@ export default function ReviewQueue() {
           setLeads(await loadLeadQueue(m));
           setHeld(await loadHeld(m));
           setApps(await loadLandlordApps(m));
+          setEdits(await loadEditRequests(m));
         })
         .catch((e: Error) => setError(e.message));
       return () => {
@@ -63,7 +65,9 @@ export default function ReviewQueue() {
         <Chip label={`Research leads (${leads.length})`} selected={tab === "leads"} onPress={() => setTab("leads")} />
         <Chip label={`Held messages (${held.length})`} selected={tab === "held"} onPress={() => setTab("held")} />
         <Chip label={`Landlords (${apps.length})`} selected={tab === "landlords"} onPress={() => setTab("landlords")} />
+        <Chip label={`Listing edits (${edits.length})`} selected={tab === "edits"} onPress={() => setTab("edits")} />
       </View>
+      {tab === "edits" && mode ? <EditsTab mode={mode} items={edits} onDone={(id) => setEdits((x) => x.filter((y) => y.id !== id))} /> : null}
       {tab === "held" && mode ? <HeldTab mode={mode} items={held} onDone={(id) => setHeld((x) => x.filter((y) => y.id !== id))} /> : null}
       {tab === "landlords" && mode ? <LandlordTab mode={mode} apps={apps} onDone={(id) => setApps((x) => x.filter((y) => y.id !== id))} /> : null}
       {tab === "leads" && mode ? <LeadExpiryTab mode={mode} leads={leads} onDone={(id) => setLeads((x) => x.filter((y) => y.id !== id))} /> : null}

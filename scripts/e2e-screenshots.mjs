@@ -195,7 +195,7 @@ await shot("16-afford-panel");
 
 // ── Phase 10: received-message safety check
 await page.goto(`${base}/check-message`);
-await page.getByLabel("Message to check").fill("I'm out of the country so I can't show it. Send the deposit by gift cards today, many people want it. Text me on WhatsApp.");
+await page.getByLabel("Paste the message here").fill("I'm out of the country so I can't show it. Send the deposit by gift cards today, many people want it. Text me on WhatsApp.");
 await page.getByTestId("check-message").click();
 await page.getByText("Stop — don't send money or personal details").waitFor();
 check(true, "message checker stops a classic scam script");
@@ -343,7 +343,32 @@ await page.getByRole("button", { name: "Search this area" }).click();
 await page.getByRole("tab", { name: "List" }).click();
 await page.getByText("Drawn area").first().waitFor();
 check(true, "a drawn area becomes a removable search filter");
-await page.getByText("Drawn area").first().click();
+// v0.15: save the drawn area with a name, then reuse it from the map
+await page.getByRole("button", { name: "Save this area" }).click();
+await page.getByTestId("area-name").fill("Near work");
+await page.getByRole("button", { name: "Save", exact: true }).click();
+await page.getByText("Near work").first().waitFor();
+check(true, "a drawn area can be saved with a name");
+await page.getByText("Near work").first().click();
+await page.waitForTimeout(200);
+await page.getByRole("tab", { name: "Map" }).click();
+await page.waitForTimeout(800);
+check((await page.getByRole("button", { name: "Near work" }).count()) === 1, "saved areas appear as one-tap chips on the map");
+await page.getByRole("button", { name: "Near work" }).click();
+await page.getByRole("tab", { name: "List" }).click();
+await page.getByText("Near work").first().waitFor();
+check(true, "a saved area can be applied again");
+await shot("38-saved-area");
+await page.getByText("Near work").first().click();
+await page.waitForTimeout(200);
+await page.getByRole("tab", { name: "Map" }).click();
+await page.waitForTimeout(500);
+await page.getByRole("button", { name: "Draw an area" }).click();
+for (const [dx, dy] of [[-90, -90], [90, -90], [90, 90], [-90, 90]]) { await page.mouse.click(cx + dx, cy + dy); await page.waitForTimeout(120); }
+await page.getByRole("button", { name: "Search this area" }).click();
+await page.getByRole("tab", { name: "List" }).click();
+await page.getByText("Near work").first().waitFor();
+await page.getByText("Near work").first().click();
 await page.waitForTimeout(200);
 check((await page.getByText("Drawn area").count()) === 0, "drawn area can be cleared");
 
@@ -382,6 +407,92 @@ await page.goto(`${base}/landlord-dashboard`);
 await page.getByTestId("dashboard-listing").first().waitFor();
 check((await page.getByText("Demo dashboard").count()) === 1, "landlord dashboard (demo) lists the manager's listings");
 await shot("36-landlord-dashboard");
+
+// ── v0.15: keyword search + total-cost sort
+await page.goto(base);
+await page.getByTestId("search-input").fill("Oakland");
+await page.waitForTimeout(700);
+const qCards = await page.getByTestId("listing-card").allInnerTexts();
+check(qCards.length > 0 && qCards.every((t) => /Oakland/i.test(t)), `keyword search narrows results (${qCards.length} Oakland cards)`);
+await shot("39-keyword-search");
+await page.getByTestId("search-input").fill("");
+await page.waitForTimeout(400);
+await page.goto(`${base}/filters`);
+await page.getByRole("button", { name: "Lowest total monthly" }).click();
+check((await page.getByRole("button", { name: "Lowest total monthly" }).count()) === 1, "filters offer sorting by total monthly cost");
+
+// ── v0.15: know your rights + fee checks
+await page.goto(`${base}/help`);
+await page.getByTestId("rights-link").click();
+await page.getByTestId("rights").waitFor();
+check((await page.getByText(/Security deposits: usually one month/).count()) === 1 && (await page.getByText(/Build credit with on-time rent/).count()) === 1, "rights screen covers deposits, fees and rent reporting with sources");
+check((await page.getByText(/Civil Code §1950.5/).count()) >= 1, "rights cite the statute");
+await shot("40-rights");
+
+// ── v0.15: private notes on saved homes + compare rows
+await page.goto(base);
+await tab("Private Room");
+await page.getByText("DEMO · Sunny room in 3BR flat").first().click();
+await page.getByText("What it costs").waitFor();
+if ((await page.getByRole("button", { name: /Saved$/ }).count()) === 0) await page.getByRole("button", { name: /Save$/ }).first().click();
+await page.goto(`${base}/saved`);
+await page.getByTestId("add-note").first().click();
+await page.getByTestId("note-input").first().fill("Tour Sat 10am, ask about parking");
+await page.reload();
+await page.getByText("Saved", { exact: true }).first().waitFor();
+await page.waitForTimeout(500);
+check((await page.getByTestId("note-input").first().inputValue()) === "Tour Sat 10am, ask about parking", "private notes on saved homes persist");
+await shot("41-saved-notes");
+await page.goto(`${base}/compare`);
+await page.waitForTimeout(500);
+check((await page.getByText("Application fee", { exact: true }).count()) >= 1 && (await page.getByText("Cost checks", { exact: true }).count()) >= 1, "compare shows application fee and cost checks");
+
+// ── v0.15: manager change request → reviewer approval (demo)
+await page.goto(`${base}/landlord-dashboard`);
+await page.getByTestId("request-change").first().click();
+await page.getByTestId("edit-form").waitFor();
+const dashTitle = await page.getByTestId("dashboard-listing").first().locator("text=/DEMO/").first().innerText();
+await page.getByTestId("edit-rent").fill("1,111");
+await page.getByTestId("send-edit").click();
+check((await page.getByText(/Add a short note/).count()) === 1, "change requests need a note");
+await page.getByTestId("edit-note").fill("New rent starting Dec 1");
+await page.getByTestId("send-edit").click();
+await page.getByText(/Sent \(demo\)/).waitFor();
+check((await page.getByText("Waiting for review").count()) === 1, "manager sees the request waiting for review");
+await shot("42-change-request");
+await page.evaluate(() => window.history.pushState({}, "", "/review"));
+await page.evaluate(() => window.dispatchEvent(new PopStateEvent("popstate")));
+await page.getByRole("button", { name: /Listing edits \(1\)/ }).click();
+await page.getByTestId("edit-item").waitFor();
+await page.getByLabel("Reason for your decision on this change").fill("Called office: new rent confirmed");
+await page.getByRole("button", { name: "Approve change" }).click();
+await page.waitForTimeout(300);
+check((await page.getByText(/Listing edits \(0\)/).count()) === 1, "approved change leaves the queue");
+await page.evaluate(() => { window.history.pushState({}, "", "/landlord-dashboard"); window.dispatchEvent(new PopStateEvent("popstate")); });
+await page.getByTestId("request-change").first().click();
+await page.getByText(/Listed now: \$1,111 rent/).waitFor();
+check((await page.getByText("Approved").count()) >= 1, `approved change updates the listing (“${dashTitle}” now $1,111) and shows as Approved`);
+
+// ── v0.15: reports I sent
+await page.goto(`${base}/account`);
+await page.getByTestId("my-reports-link").click();
+await page.getByTestId("my-reports").waitFor();
+check((await page.getByText(/Saved on this device|You haven't reported any listings/).count()) >= 1, "reports screen shows each report's status");
+
+// ── v0.15: Spanish filters and message checker
+await page.goto(`${base}/help`);
+await page.getByRole("button", { name: "Español" }).click();
+await page.goto(`${base}/filters`);
+await page.getByText("Presupuesto", { exact: true }).waitFor();
+check((await page.getByRole("button", { name: "Total mensual más bajo" }).count()) === 1, "filters render in Spanish");
+await page.goto(`${base}/check-message`);
+await page.getByLabel("Pega el mensaje aquí").fill("Send the deposit by Zelle before the tour, many people are interested");
+await page.getByTestId("check-message").click();
+await page.getByText("Alto — no envíes dinero ni datos personales").waitFor();
+check((await page.getByText(/Pide dinero antes de que visites/).count()) === 1, "message-checker warnings are translated");
+await shot("43-spanish-message-check");
+await page.goto(`${base}/help`);
+await page.getByRole("button", { name: "English" }).click();
 
 // ── v0.14: Simplified Chinese + translated listing detail (Spanish)
 await page.goto(`${base}/help`);

@@ -1,9 +1,9 @@
-import { AREA_PROBLEM_TEXT, CATEGORIES, validateArea, type LatLng, type SearchHit } from "@housing-compass/core";
+import { AREA_PROBLEM_TEXT, CATEGORIES, validateArea, validateAreaName, type LatLng, type SearchHit } from "@housing-compass/core";
 import { useT } from "../../i18n";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrefs } from "../../state/prefs";
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinkOutPanel } from "../../components/LinkOutPanel";
 import { ListingCard } from "../../components/ListingCard";
@@ -39,6 +39,21 @@ export default function Explore() {
   }, [prefsReady, onboarded]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawing, setDrawing] = useState(false);
+  const [queryText, setQueryText] = useState(filters.query ?? "");
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const q = queryText.trim() || null;
+      if (q !== (useStore.getState().filters.query ?? null)) patchFilters({ query: q });
+    }, 250);
+    return () => clearTimeout(id);
+  }, [queryText, patchFilters]);
+  const savedAreas = useStore((s) => s.savedAreas);
+  const saveArea = useStore((s) => s.saveArea);
+  const deleteArea = useStore((s) => s.deleteArea);
+  const [areaName, setAreaName] = useState("");
+  const [naming, setNaming] = useState(false);
+  const areaNameProblem = naming ? validateAreaName(areaName, savedAreas.map((a) => a.name)) : null;
+  const currentAreaSaved = !!filters.area && savedAreas.some((a) => JSON.stringify(a.points) === JSON.stringify(filters.area));
   const [draft, setDraft] = useState<LatLng[]>([]);
   const draftProblem = draft.length ? validateArea(draft) : null;
   const onMapPress = useCallback((p: LatLng) => setDraft((d) => (d.length >= 20 ? d : [...d, p])), []);
@@ -122,8 +137,27 @@ export default function Explore() {
       <Text style={type.small}>{d.categoryHelp[filters.category]}</Text>
       {filters.area ? (
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-          <Chip icon="shapes-outline" label={`${t("area.drawn")}  ✕`} selected onPress={() => patchFilters({ area: null })} accessibilityHint="Removes the drawn search area" />
+          <Chip icon="shapes-outline" label={`${savedAreas.find((a) => JSON.stringify(a.points) === JSON.stringify(filters.area))?.name ?? t("area.drawn")}  ✕`} selected onPress={() => patchFilters({ area: null })} accessibilityHint="Removes the drawn search area" />
+          {!currentAreaSaved && !naming ? <Chip icon="bookmark-outline" label={t("area.save")} onPress={() => setNaming(true)} /> : null}
           {result.hiddenApproximateCount ? <Text style={[type.tiny, { alignSelf: "center", flexShrink: 1 }]}>{t("area.approxHidden", { n: result.hiddenApproximateCount })}</Text> : null}
+        </View>
+      ) : null}
+      {naming && filters.area ? (
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TextInput value={areaName} onChangeText={setAreaName} placeholder={t("area.namePh")} style={styles.search} accessibilityLabel={t("area.namePh")} maxLength={40} testID="area-name" />
+            <Chip
+              label={t("area.saveConfirm")}
+              selected={!areaNameProblem}
+              onPress={() => {
+                if (areaNameProblem || !filters.area) return;
+                saveArea(areaName, filters.area);
+                setNaming(false);
+                setAreaName("");
+              }}
+            />
+          </View>
+          {areaName && areaNameProblem ? <Text style={type.tiny}>{areaNameProblem}</Text> : null}
         </View>
       ) : null}
       {cityFocus ? (
@@ -174,6 +208,24 @@ export default function Explore() {
             <Chip key={c} label={d.category[c]} selected={filters.category === c} onPress={() => { setCategory(c); setSelectedId(null); }} />
           ))}
         </ScrollView>
+        <View style={styles.searchRow}>
+          <Icon name="search" size={18} tint={color.sub} />
+          <TextInput
+            value={queryText}
+            onChangeText={setQueryText}
+            placeholder={t("search.placeholder")}
+            style={styles.searchInput}
+            accessibilityLabel={t("search.placeholder")}
+            returnKeyType="search"
+            autoCorrect={false}
+            testID="search-input"
+          />
+          {queryText ? (
+            <Pressable onPress={() => setQueryText("")} accessibilityRole="button" accessibilityLabel={t("search.clear")} hitSlop={10}>
+              <Icon name="close-circle" size={18} tint={color.muted} />
+            </Pressable>
+          ) : null}
+        </View>
         <View style={styles.segment} accessibilityRole="tablist">
           {(["list", "map"] as const).map((v) => (
             <Pressable key={v} onPress={() => setView(v)} accessibilityRole="tab" accessibilityState={{ selected: view === v }} style={[styles.segBtn, view === v && styles.segOn]}>
@@ -250,9 +302,28 @@ export default function Explore() {
                 </View>
               </View>
             ) : (
-              <View style={{ flexDirection: "row", gap: 8, alignSelf: "flex-start" }}>
-                <Chip icon="pencil-outline" label={filters.area ? t("area.redraw") : t("area.draw")} onPress={startDrawing} />
-                {filters.area ? <Chip label={t("area.clear")} onPress={() => patchFilters({ area: null })} /> : null}
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 8, alignSelf: "flex-start" }}>
+                  <Chip icon="pencil-outline" label={filters.area ? t("area.redraw") : t("area.draw")} onPress={startDrawing} />
+                  {filters.area ? <Chip label={t("area.clear")} onPress={() => patchFilters({ area: null })} /> : null}
+                </View>
+                {savedAreas.length ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {savedAreas.map((a) => (
+                      <Chip
+                        key={a.id}
+                        icon="bookmark"
+                        label={a.name}
+                        selected={JSON.stringify(a.points) === JSON.stringify(filters.area)}
+                        onPress={() => patchFilters({ area: a.points })}
+                        accessibilityHint={t("area.useSaved")}
+                      />
+                    ))}
+                    {filters.area && currentAreaSaved ? (
+                      <Chip icon="trash-outline" label={t("area.deleteSaved")} onPress={() => { const a = savedAreas.find((x) => JSON.stringify(x.points) === JSON.stringify(filters.area)); if (a) deleteArea(a.id); }} />
+                    ) : null}
+                  </ScrollView>
+                ) : null}
               </View>
             )}
           </View>
@@ -308,6 +379,9 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center", gap: 8, padding: space.xl, marginVertical: space.md, backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: color.line },
   inlineBtn: { marginTop: 6, alignSelf: "flex-start", minHeight: 36, justifyContent: "center", paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line },
   inlineBtnText: { fontSize: 13, fontWeight: "700", color: color.ink },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: HIT, paddingHorizontal: 12, borderRadius: radius.md, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line },
+  searchInput: { flex: 1, minHeight: HIT, fontSize: 15, color: color.ink, outlineWidth: 0 },
+  search: { flex: 1, minHeight: 38, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, paddingHorizontal: 12, fontSize: 15, color: color.ink, backgroundColor: color.surface },
   drawBar: { position: "absolute", left: space.md, right: space.md, top: space.md + 28, gap: 8 },
   drawPanel: { gap: 8, padding: space.md, borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.97)", borderWidth: 1, borderColor: color.brand },
   mapOverlay: { position: "absolute", left: space.md, right: space.md, bottom: space.lg, gap: 8 },

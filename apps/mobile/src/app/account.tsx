@@ -6,25 +6,27 @@ import { Banner, Button, KV, Section } from "../components/ui";
 import { backendEnabled, supabase } from "../data/supabase";
 import { useStore } from "../state/store";
 import { clearThisDevice, exportMyData } from "../lib/myData";
+import { useT } from "../i18n";
 import { HIT, color, radius, space, type } from "../theme";
 
 function DeviceDataSection({ signedIn }: { signedIn: boolean }) {
+  const { t } = useT();
   const [msg, setMsg] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
   return (
-    <Section title="Download or clear your data">
+    <Section title={t("acct.dataTitle")}>
       <Text style={type.small}>
-        {signedIn ? "Download a copy of everything Housing Compass keeps for you — on this device and in your account — as a readable file." : "Download a copy of everything Housing Compass keeps on this device as a readable file."}
+        {signedIn ? t("acct.dataBodyAccount") : t("acct.dataBodyDevice")}
       </Text>
       <Button
         kind="secondary"
         icon="download-outline"
-        label="Download my data"
+        label={t("acct.download")}
         testID="export-data"
         onPress={async () => {
           try {
             const r = await exportMyData(signedIn);
-            setMsg(r === "downloaded" ? "Saved to your downloads." : "");
+            setMsg(r === "downloaded" ? t("acct.downloaded") : "");
           } catch (e) {
             setMsg((e as Error).message);
           }
@@ -34,22 +36,23 @@ function DeviceDataSection({ signedIn }: { signedIn: boolean }) {
       {confirmClear ? (
         <Button
           kind="danger"
-          label="Yes, clear this device"
+          label={t("acct.clearConfirm")}
           onPress={async () => {
             await clearThisDevice();
             setConfirmClear(false);
-            setMsg("Everything on this device was cleared.");
+            setMsg(t("acct.cleared"));
           }}
         />
       ) : (
-        <Button kind="danger" icon="phone-portrait-outline" label="Clear everything on this device" onPress={() => setConfirmClear(true)} />
+        <Button kind="danger" icon="phone-portrait-outline" label={t("acct.clear")} onPress={() => setConfirmClear(true)} />
       )}
-      <Text style={type.tiny}>Clearing removes saved homes, searches, applications, messages, checklists and your numbers from this device. It doesn't delete your account.</Text>
+      <Text style={type.tiny}>{t("acct.clearNote")}</Text>
     </Section>
   );
 }
 
 export default function Account() {
+  const { t } = useT();
   const session = useSession();
   const { lastSync, syncing } = useSessionStore();
   const otp = useEmailOtp();
@@ -65,10 +68,11 @@ export default function Account() {
   if (!backendEnabled) {
     return (
       <ScrollView contentContainerStyle={styles.wrap}>
-        <Banner tone="info" icon="cloud-offline-outline" title="Accounts aren't switched on in this build">
-          Everything you save stays on this device. Accounts sync favorites, saved searches and reports once the app is connected to its server.
+        <Banner tone="info" icon="cloud-offline-outline" title={t("acct.offTitle")}>
+          {t("acct.offBody")}
         </Banner>
-        <KV k="Saved on this device" v={`${local.fav} favorites · ${local.searches} searches · ${local.reports} reports`} />
+        <KV k={t("acct.onDevice")} v={t("acct.counts", { fav: local.fav, searches: local.searches, reports: local.reports })} />
+        <Button kind="secondary" icon="flag-outline" label={t("reports.open")} onPress={() => router.push("/my-reports")} testID="my-reports-link" />
         <DeviceDataSection signedIn={false} />
       </ScrollView>
     );
@@ -77,40 +81,40 @@ export default function Account() {
   if (!session) {
     return (
       <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-        <Text style={type.small}>Sign in with a one-time code to keep favorites, searches, alerts and applications on all your devices. No password needed.</Text>
+        <Text style={type.small}>{t("acct.signInIntro")}</Text>
         {otp.stage === "email" ? (
-          <Section title="Your email">
+          <Section title={t("acct.email")}>
             <TextInput value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoComplete="email" style={styles.input} accessibilityLabel="Email address" />
-            <Button label={otp.busy ? "Sending…" : "Email me a code"} disabled={otp.busy || !/^\S+@\S+\.\S+$/.test(email)} onPress={() => otp.send(email)} />
+            <Button label={otp.busy ? t("acct.sending") : t("acct.sendCode")} disabled={otp.busy || !/^\S+@\S+\.\S+$/.test(email)} onPress={() => otp.send(email)} />
           </Section>
         ) : (
-          <Section title="Enter the 6-digit code">
+          <Section title={t("acct.enterCode")}>
             <Text style={type.small}>Sent to {email}. It expires in a few minutes.</Text>
             <TextInput value={code} onChangeText={setCode} placeholder="123456" keyboardType="number-pad" autoComplete="one-time-code" maxLength={6} style={styles.input} accessibilityLabel="Six digit code" />
-            <Button label={otp.busy ? "Checking…" : "Sign in"} disabled={otp.busy || code.length !== 6} onPress={() => otp.verify(email, code)} />
-            <Button kind="ghost" label="Use a different email" onPress={otp.reset} />
+            <Button label={otp.busy ? t("acct.checking") : t("acct.signIn")} disabled={otp.busy || code.length !== 6} onPress={() => otp.verify(email, code)} />
+            <Button kind="ghost" label={t("acct.otherEmail")} onPress={otp.reset} />
           </Section>
         )}
         {otp.error ? <Banner tone="danger" icon="alert-circle-outline" title={otp.error} /> : null}
-        <Text style={type.tiny}>We use your email only to sign you in and send alerts you turn on.</Text>
+        <Text style={type.tiny}>{t("acct.emailNote")}</Text>
       </ScrollView>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
-      <Section title="Signed in">
+      <Section title={t("acct.signedIn")}>
         <KV k="Email" v={session.user.email ?? "—"} />
         <KV k="Sync" v={syncing ? "Syncing…" : lastSync ? `Uploaded ${lastSync.favoritesUploaded} favorites, ${lastSync.searchesUploaded} searches, ${lastSync.reportsUploaded} reports` : "Up to date"} />
-        <Button kind="secondary" icon="sync-outline" label="Sync now" onPress={() => void runSync()} disabled={syncing} />
-        <Button kind="secondary" icon="log-out-outline" label="Sign out" onPress={async () => { await supabase!.auth.signOut(); router.back(); }} />
+        <Button kind="secondary" icon="sync-outline" label={t("acct.sync")} onPress={() => void runSync()} disabled={syncing} />
+        <Button kind="secondary" icon="log-out-outline" label={t("acct.signOut")} onPress={async () => { await supabase!.auth.signOut(); router.back(); }} />
       </Section>
-      <Section title="Your data">
-        <Text style={type.small}>Delete your favorites, saved searches, applications and notifications from our servers. Reports you sent are kept without your comments, because they protect other renters.</Text>
+      <Section title={t("acct.serverData")}>
+        <Text style={type.small}>{t("acct.deleteBody")}</Text>
         {confirmDelete ? (
           <Button
             kind="danger"
-            label="Yes, delete my data"
+            label={t("acct.deleteConfirm")}
             onPress={async () => {
               await supabase!.rpc("delete_my_data");
               useStore.setState({ favorites: [], savedSearches: [], reports: [] });
@@ -119,9 +123,10 @@ export default function Account() {
             }}
           />
         ) : (
-          <Button kind="danger" icon="trash-outline" label="Delete my data" onPress={() => setConfirmDelete(true)} />
+          <Button kind="danger" icon="trash-outline" label={t("acct.delete")} onPress={() => setConfirmDelete(true)} />
         )}
       </Section>
+      <Button kind="secondary" icon="flag-outline" label={t("reports.open")} onPress={() => router.push("/my-reports")} />
       <DeviceDataSection signedIn />
     </ScrollView>
   );

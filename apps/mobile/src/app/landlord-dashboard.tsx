@@ -10,6 +10,7 @@ import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSession } from "../auth/session";
 import { Banner, Button, KV, Section, Tag } from "../components/ui";
+import { EditRequestForm } from "../components/EditRequestForm";
 import { config, now } from "../config";
 import { supabase } from "../data/supabase";
 import { shortDate } from "../lib/format";
@@ -36,6 +37,7 @@ export default function LandlordDashboard() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [mode, setMode] = useState<"server" | "demo" | "none">("none");
   const [open, setOpen] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [audit, setAudit] = useState<Record<string, AuditRow[]>>({});
   const [error, setError] = useState("");
 
@@ -126,8 +128,10 @@ export default function LandlordDashboard() {
           {r.photos ? <KV k="Photos" v={Object.entries(r.photos).map(([k, n]) => `${n} ${k}`).join(" · ")} /> : null}
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
             <Button kind="secondary" icon="eye-outline" label="Preview as renters see it" onPress={() => router.push(`/listing/${encodeURIComponent(r.id)}`)} />
+            <Button kind="secondary" icon="create-outline" label={editing === r.id ? "Close" : "Request a change"} onPress={() => setEditing(editing === r.id ? null : r.id)} testID="request-change" />
             {mode === "server" ? <Button kind="ghost" icon="time-outline" label={open === r.id ? "Hide history" : "Change history"} onPress={() => void loadAudit(r.id)} /> : null}
           </View>
+          {editing === r.id ? <EditRequestForm listingId={r.id} /> : null}
           {open === r.id
             ? (audit[r.id] ?? []).map((a, i) => (
                 <Text key={i} style={type.tiny}>

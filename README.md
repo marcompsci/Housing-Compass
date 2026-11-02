@@ -5,7 +5,7 @@ Find affordable rooms, shared housing, studios, one-bedrooms and income-restrict
 Housing Compass shows **only official or manager-verified homes by default**. Unverified leads appear only after a warning, in their own labeled section, and every card shows its source, rent basis (per bed / room / unit), all-in monthly cost, fees, and when it was last verified.
 
 - **Repository:** https://github.com/marcompsci/Housing-Compass
-- **Status:** v0.14. Built and tested locally, installed on iPhone as a demo build. Not yet connected to a live Supabase backend. See [`docs/STATUS_REPORT.md`](docs/STATUS_REPORT.md).
+- **Status:** v0.15. Built and tested locally, installed on iPhone as a demo build. Not yet connected to a live Supabase backend. See [`docs/STATUS_REPORT.md`](docs/STATUS_REPORT.md).
 - **Platforms:** iOS, Android and web from one Expo codebase
 - **Languages:** English, Spanish and Simplified Chinese (translations pending native-speaker review)
 
@@ -17,7 +17,7 @@ Housing Compass shows **only official or manager-verified homes by default**. Un
 
 | | |
 |---|---|
-| `apps/mobile` | The Housing Compass app (Expo SDK 58 + Expo Router): search, draw-an-area map, filters, listing details (travel estimates, price history, sharing), compare, saved, applications with document checklists, messages & tours (calendar export, tour-day checklist), alerts + settings, move-in savings planner, landlord dashboard, reviewer tools, onboarding, data export |
+| `apps/mobile` | The Housing Compass app (Expo SDK 58 + Expo Router): search, draw-an-area map, filters, listing details (travel estimates, price history, sharing), compare, saved, applications with document checklists, messages & tours (calendar export, tour-day checklist), alerts + settings, move-in savings planner, know-your-rights (CA) with deposit/fee checks, keyword search, saved areas, private notes and offline saved homes, landlord dashboard with change requests, reviewer tools, onboarding, data export |
 | `packages/core` | Shared TypeScript rules: listing schema, pricing, budgets, search, trust levels, risk signals, Fair Housing screen, ingestion, alerts, affordability, regions, official programs, drawn areas, travel estimates, price history, calendar files, checklists, savings, moderation, photo pipeline |
 | `supabase/` | Postgres + PostGIS migrations, row-level security, trust triggers, seeds, SQL tests, edge functions (`ingest`, `notify`, `health`, `photo-scan`) |
 | `scripts/` | Seed builder, DB test runner, browser e2e + screenshots, link checker, data builders |
@@ -27,7 +27,7 @@ Housing Compass shows **only official or manager-verified homes by default**. Un
 
 ```bash
 npm install                 # Node 20+
-npm test                    # 145 core tests
+npm test                    # 158 core tests
 npm run typecheck
 cd apps/mobile
 npx expo start --web        # run in a browser
@@ -39,9 +39,9 @@ Copy `.env.example` to `apps/mobile/.env` to change demo mode, the map style, or
 ## Tests
 
 ```bash
-npm run seed:build && npm run db:test   # migrations + seeds + 20 SQL trust/RLS sections + DB↔app contract tests
+npm run seed:build && npm run db:test   # migrations + seeds + 21 SQL trust/RLS sections + DB↔app contract tests
 npm run edge:check                      # Deno typecheck of the edge functions
-npm run web:export && npm run e2e       # 57 browser checks + screenshots in docs/screenshots/
+npm run web:export && npm run e2e       # 73 browser checks + screenshots in docs/screenshots/
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of these, plus a secret scan and a dependency audit, on every push and pull request.

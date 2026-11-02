@@ -1,4 +1,6 @@
-import { BASIS_LABEL, LEVEL_LABEL, formatRent, formatUsd, groupByBasis, moveInTotal, totalMonthly, type Listing, type PriceBasis } from "@housing-compass/core";
+import { BASIS_LABEL, LEVEL_LABEL, feeChecks, formatRent, formatUsd, groupByBasis, moveInTotal, rentBurden, totalMonthly, type HouseholdProfile, type Listing, type PriceBasis } from "@housing-compass/core";
+import { useHousehold } from "../../state/household";
+import { useStore as useAppStore } from "../../state/store";
 import { router } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,6 +18,8 @@ const ROWS: Array<[string, (l: Listing) => string]> = [
   ["Total monthly", (l) => { const t = totalMonthly(l); return t.amountCents === null ? NC : formatUsd(t.amountCents) + (t.complete ? "" : "*"); }],
   ["Deposit", (l) => (l.pricing.depositCents === null ? NC : formatUsd(l.pricing.depositCents))],
   ["Due at move-in", (l) => { const m = moveInTotal(l); return m.amountCents === null ? NC : formatUsd(m.amountCents); }],
+  ["Application fee", (l) => (l.pricing.applicationFeeCents === null ? NC : formatUsd(l.pricing.applicationFeeCents))],
+  ["Cost checks", (l) => { const c = feeChecks(l); return c.length ? c.map((x) => (x.code === "app_fee_over_cap" ? "Fee above CA cap?" : x.code === "deposit_over_two_months" ? "Deposit > 2 months" : "Deposit > 1 month")).join(" · ") : l.pricing.depositCents === null && l.pricing.applicationFeeCents === null ? NC : "No issues found"; }],
   ["City", (l) => l.address.city],
   ["Pets", (l) => l.amenities.pets?.replace(/_/g, " ") ?? NC],
   ["Furnished", (l) => (l.amenities.furnished === null ? NC : l.amenities.furnished ? "Yes" : "No")],
@@ -24,7 +28,29 @@ const ROWS: Array<[string, (l: Listing) => string]> = [
   ["Last verified", lastVerifiedText],
 ];
 
+function incomeRow(h: HouseholdProfile | null): [string, (l: Listing) => string][] {
+  if (!h || h.annualIncomeCents <= 0) return [];
+  return [["Share of income", (l) => { const t = totalMonthly(l); const cents = t.amountCents ?? l.pricing.baseRentCents; const b = rentBurden(cents, h.annualIncomeCents); return `${Math.round(b.share * 100)}%${b.burden === "affordable" ? "" : b.burden === "cost_burdened" ? " (over 30%)" : " (over 50%)"}${t.amountCents === null ? " · rent only" : ""}`; }]];
+}
+
+function Notes({ listings }: { listings: Listing[] }) {
+  const notes = useAppStore((s) => s.notes);
+  const withNotes = listings.filter((l) => notes[l.id]);
+  if (!withNotes.length) return null;
+  return (
+    <View style={{ gap: 4 }}>
+      {withNotes.map((l) => (
+        <Text key={l.id} style={type.tiny}>
+          <Text style={{ fontWeight: "700" }}>{l.title}:</Text> {notes[l.id]}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 function Table({ listings }: { listings: Listing[] }) {
+  const household = useHousehold((s) => s.profile);
+  const rows = [...ROWS, ...incomeRow(household)];
   return (
     <ScrollView horizontal contentContainerStyle={{ paddingBottom: 4 }}>
       <View style={styles.table}>
@@ -38,7 +64,7 @@ function Table({ listings }: { listings: Listing[] }) {
             </View>
           ))}
         </View>
-        {ROWS.map(([label, fn]) => (
+        {rows.map(([label, fn]) => (
           <View key={label} style={styles.row}>
             <View style={[styles.cell, styles.labelCell]}>
               <Text style={[type.small, { fontWeight: "700" }]}>{label}</Text>
@@ -84,6 +110,7 @@ export default function Compare() {
           <View key={b} style={{ gap: 8 }}>
             <Text style={type.h2}>Priced {BASIS_LABEL[b]}</Text>
             <Table listings={groups[b]} />
+            <Notes listings={groups[b]} />
           </View>
         ))}
         {listings.length ? <Text style={type.tiny}>* Some monthly costs are not confirmed yet.</Text> : null}

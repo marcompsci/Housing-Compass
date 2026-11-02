@@ -1,15 +1,17 @@
-import { checkReceivedMessage } from "@housing-compass/core";
+import { checkReceivedMessage, localizeWarning } from "@housing-compass/core";
+import { useT } from "../i18n";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Banner, Button, Icon } from "../components/ui";
 import { HIT, color, radius, space, type } from "../theme";
 
 export default function CheckMessage() {
+  const { t, locale } = useT();
   const [text, setText] = useState("");
   const [result, setResult] = useState<ReturnType<typeof checkReceivedMessage> | null>(null);
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-      <Text style={type.small}>Paste a message you got from a landlord or agent. It's checked on this phone and never uploaded.</Text>
+      <Text style={type.small}>{t("cm.intro")}</Text>
       <TextInput
         value={text}
         onChangeText={(t) => {
@@ -18,25 +20,26 @@ export default function CheckMessage() {
         }}
         multiline
         maxLength={5000}
-        placeholder="Paste the message here"
+        placeholder={t("cm.placeholder")}
         style={styles.input}
-        accessibilityLabel="Message to check"
+        accessibilityLabel={t("cm.placeholder")}
       />
-      <Button label="Check this message" icon="shield-checkmark-outline" disabled={text.trim().length < 10} onPress={() => setResult(checkReceivedMessage(text))} testID="check-message" />
+      <Button label={t("cm.check")} icon="shield-checkmark-outline" disabled={text.trim().length < 10} onPress={() => setResult(checkReceivedMessage(text))} testID="check-message" />
       {result ? (
         <View style={{ gap: space.md }} accessibilityLiveRegion="polite">
           {result.level === "stop" ? (
-            <Banner tone="danger" icon="hand-left-outline" title="Stop — don't send money or personal details">
-              This message has warning signs common in rental scams. The listing may still be real, but verify before you do anything.
+            <Banner tone="danger" icon="hand-left-outline" title={t("cm.stopTitle")}>
+              {t("cm.stopBody")}
             </Banner>
           ) : result.level === "be_careful" ? (
-            <Banner tone="warn" icon="warning-outline" title="Be careful" />
+            <Banner tone="warn" icon="warning-outline" title={t("cm.careful")} />
           ) : (
-            <Banner tone="info" icon="checkmark-circle-outline" title="No common warning signs found">
-              That isn't a guarantee. Still tour first and confirm the manager through their official website.
+            <Banner tone="info" icon="checkmark-circle-outline" title={t("cm.okTitle")}>
+              {t("cm.okBody")}
             </Banner>
           )}
-          {result.warnings.map((w) => (
+          {locale !== "en" ? <Text style={type.tiny}>{t("cm.englishOnly")}</Text> : null}
+          {result.warnings.map((raw) => localizeWarning(raw, locale)).map((w) => (
             <View key={w.code} style={styles.warning}>
               <Icon name={w.severity === "high" ? "alert-circle" : "alert-circle-outline"} size={20} tint={w.severity === "high" ? color.danger : color.warn} />
               <View style={{ flex: 1, gap: 2 }}>

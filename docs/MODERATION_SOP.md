@@ -55,3 +55,8 @@ Flags like "No Section 8", "adults only" or "[religion] only" go to review. Shar
 ## Takedown & appeals
 - **Remove** (`review_decide 'remove'`) for confirmed problems. Always give the reason, in neutral words.
 - An owner or reporter can appeal. A different reviewer decides with `appeal_decide()`. Upholding returns the listing to unverified, never straight to verified.
+
+## Manager change requests (Review → Listing edits)
+- Confirm the change with the manager through the contact on record (not a number in the request).
+- Watch the cost checks shown on the card: a new deposit over one month's rent or a fee above the screening-fee cap needs an explanation before approval.
+- You can't approve a request you made yourself. Approving updates rent/fees/dates, refreshes "price last checked", and alerts people who saved the home.

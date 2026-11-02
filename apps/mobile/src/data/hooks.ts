@@ -81,11 +81,16 @@ export function useListing(id: string | null): { listing: Listing | null; loadin
   useEffect(() => {
     if (!id || cached) return;
     let alive = true;
-    repository.get(id).then((l) => {
-      if (!alive) return;
-      if (l) put([l]);
-      setLoading(false);
-    });
+    repository
+      .get(id)
+      .catch(() => null)
+      .then(async (l) => {
+        if (!alive) return;
+        // Offline or gone from the server: fall back to this device's copy of a saved home.
+        const fallback = l ?? (await import("./savedCopies")).savedCopy(id)?.listing ?? null;
+        if (fallback) put([fallback]);
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -101,7 +106,12 @@ export function useListings(ids: string[]): Listing[] {
   const missingKey = missing.join("|");
   useEffect(() => {
     if (!missing.length) return;
-    Promise.all(missing.map((id) => repository.get(id))).then((ls) => put(ls.filter((l): l is Listing => !!l)));
+    Promise.all(missing.map((id) => repository.get(id).catch(() => null)))
+      .then(async (ls) => {
+        const { savedCopy } = await import("./savedCopies");
+        return ls.map((l, i) => l ?? savedCopy(missing[i]!)?.listing ?? null);
+      })
+      .then((ls) => put(ls.filter((l): l is Listing => !!l)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missingKey]);
   return ids.map((id) => byId[id]).filter((l): l is Listing => !!l);

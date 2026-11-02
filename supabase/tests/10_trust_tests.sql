@@ -553,3 +553,60 @@ end $$;
 reset request.jwt.claim.sub;
 reset role;
 select 'V0.14 TESTS PASSED' as result;
+
+-- 21. v0.15: manager edit requests with review; "no longer available" alerts.
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000d4';
+insert into favorites(user_id, listing_id) values ('00000000-0000-0000-0000-0000000000d4', 'lead-oakland-801-14th-st');
+do $$ begin
+  begin perform request_listing_edit('lead-oakland-801-14th-st', '{"base_rent_cents": 100000}', 'not my listing'); raise exception 'TEST FAILED: non-manager requested an edit';
+  exception when insufficient_privilege then null; end;
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';  -- verified manager member
+do $$ declare rid uuid; begin
+  begin perform request_listing_edit('lead-oakland-801-14th-st', '{"title": "Luxury"}', 'renaming the listing'); raise exception 'TEST FAILED: title edit accepted';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin perform request_listing_edit('lead-oakland-801-14th-st', '{"base_rent_cents": -5}', 'negative rent'); raise exception 'TEST FAILED: negative rent accepted';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin perform request_listing_edit('lead-oakland-801-14th-st', '{"mark_leased": true, "base_rent_cents": 1}', 'leased and cheaper'); raise exception 'TEST FAILED: leased combined with other edits';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  rid := request_listing_edit('lead-oakland-801-14th-st', '{"base_rent_cents": 131500, "confirm_available": true}', 'New rent from Dec 1; unit still open');
+  perform set_config('test.rid', rid::text, false);
+  assert (select count(*) from listing_edit_requests where status = 'open') = 1, 'manager sees own open request';
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+do $$ begin assert (select count(*) from listing_edit_requests) = 0, 'renters cannot see edit requests'; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';  -- reviewer
+do $$ begin
+  begin perform decide_listing_edit(current_setting('test.rid')::uuid, true, 'ok'); raise exception 'TEST FAILED: short reason';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  assert decide_listing_edit(current_setting('test.rid')::uuid, true, 'Called office: new rent confirmed') = 'approved';
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+do $$ begin
+  assert (select base_rent_cents from units where listing_id = 'lead-oakland-801-14th-st' limit 1) = 131500, 'approved rent applied';
+  assert exists (select 1 from price_history where listing_id = 'lead-oakland-801-14th-st' and new_cents = 131500), 'price history recorded';
+  assert (select availability_confirmed_at is not null and last_price_check_at > now() - interval '1 minute' from listings where id = 'lead-oakland-801-14th-st'), 'availability + price check refreshed';
+  assert exists (select 1 from notifications where user_id = '00000000-0000-0000-0000-0000000000d4' and kind = 'listing_changed' and dedupe_key = 'pc:lead-oakland-801-14th-st:131500'), 'saver told about the price change';
+  assert exists (select 1 from audit_events where entity_id = 'lead-oakland-801-14th-st' and action = 'manager_edit_approved'), 'edit audited';
+end $$;
+-- marking it rented hides it and tells people who saved it
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';
+do $$ begin perform set_config('test.rid2', request_listing_edit('lead-oakland-801-14th-st', '{"mark_leased": true}', 'Signed a lease on Nov 3')::text, false); end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f6';
+do $$ begin assert decide_listing_edit(current_setting('test.rid2')::uuid, true, 'Manager confirmed lease signed') = 'approved'; end $$;
+reset request.jwt.claim.sub;
+reset role;
+do $$ begin
+  assert (select status from listings where id = 'lead-oakland-801-14th-st') = 'leased', 'listing marked rented';
+  assert exists (select 1 from notifications where user_id = '00000000-0000-0000-0000-0000000000d4' and kind = 'listing_expired' and title = 'A saved home was rented'), 'saver told it was rented';
+  assert not exists (select 1 from notifications where user_id = '00000000-0000-0000-0000-0000000000c3' and kind = 'listing_expired' and listing_id = 'lead-oakland-801-14th-st'), 'no alert for people who did not save it or turned the kind off';
+end $$;
+set role anon;
+do $$ begin assert not exists (select 1 from search_listings('ENTIRE_1BR', true) d where d->>'id' = 'lead-oakland-801-14th-st'), 'rented home hidden from search'; end $$;
+reset role;
+-- restore for the DB↔app contract tests that run next
+update listings set status = 'active' where id = 'lead-oakland-801-14th-st';
+select 'V0.15 TESTS PASSED' as result;

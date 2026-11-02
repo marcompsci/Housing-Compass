@@ -15,6 +15,8 @@ export interface DeviceData {
   checklists: Record<string, string[]>;
   savings: unknown;
   household?: unknown;
+  notes?: Record<string, string>;
+  savedAreas?: unknown[];
 }
 
 export function buildDataExport(device: DeviceData, server: unknown | null, now: Date): string {

@@ -38,3 +38,6 @@ export * from "./responseMetrics";
 export * from "./trust/moderation";
 export * from "./photos";
 export * from "./dataExport";
+export * from "./rights";
+export * from "./managerEdits";
+export * from "./checklistText";

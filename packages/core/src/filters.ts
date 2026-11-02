@@ -1,6 +1,6 @@
 import type { Category, Listing } from "./schema";
 import { categorize } from "./categories";
-import { budgetStatus, DEFAULT_BUDGET, type BudgetPrefs, type BudgetStatus } from "./budget";
+import { budgetStatus, DEFAULT_BUDGET, effectiveMonthlyCents, type BudgetPrefs, type BudgetStatus } from "./budget";
 import { haversineKm, inRegion, type LatLng, type RegionId } from "./geo";
 import { isPubliclyVisible } from "./trust/verification";
 import { listingInArea } from "./area";
@@ -36,7 +36,9 @@ export interface SearchFilters {
   maxCommuteKm: number | null;
   /** Hand-drawn search area (3–20 points). Approximate (city/ZIP) pins never match an area. */
   area: LatLng[] | null;
-  sort: "price_asc" | "distance" | "recently_checked";
+  sort: "price_asc" | "total_monthly" | "distance" | "recently_checked";
+  /** Free-text: matches title, property name, street, city, ZIP or county (accents and case ignored). */
+  query: string | null;
 }
 
 export const DEFAULT_FILTERS: SearchFilters = {
@@ -62,6 +64,7 @@ export const DEFAULT_FILTERS: SearchFilters = {
   maxCommuteKm: null,
   area: null,
   sort: "price_asc",
+  query: null,
 };
 
 export interface SearchHit {
@@ -90,6 +93,19 @@ function attr(value: boolean | null, wanted: boolean, includeUnknown: boolean, n
   return value === wanted;
 }
 
+/** Lowercase, strip accents and punctuation, collapse spaces. */
+export function normalizeText(s: string): string {
+  return s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ").trim();
+}
+
+/** Every word of the query must appear somewhere in the listing's searchable text. */
+export function matchesQuery(l: Listing, query: string | null): boolean {
+  const q = normalizeText(query ?? "");
+  if (!q) return true;
+  const hay = normalizeText([l.title, l.propertyName ?? "", l.address.line1, l.address.city, l.address.zip ?? "", l.address.county ?? ""].join(" "));
+  return q.split(" ").every((w) => hay.includes(w));
+}
+
 export function search(listings: Listing[], f: SearchFilters): SearchResult {
   let hiddenUnverifiedCount = 0;
   let hiddenOverBudgetCount = 0;
@@ -99,6 +115,7 @@ export function search(listings: Listing[], f: SearchFilters): SearchResult {
   for (const l of listings) {
     if (f.region && !inRegion(l.address, f.region)) continue;
     if (categorize(l) !== f.category) continue;
+    if (!matchesQuery(l, f.query ?? null)) continue;
 
     if (!isPubliclyVisible(l, { includeUnverified: f.includeUnverified, includeDemo: f.includeDemo })) {
       if (l.verification.level === "SOURCE_LISTED_UNVERIFIED" && l.status === "active" && (f.includeDemo || !l.isDemo)) {
@@ -161,6 +178,7 @@ export function search(listings: Listing[], f: SearchFilters): SearchResult {
     const basisRank = (h: SearchHit) => ({ PER_UNIT: 0, PER_ROOM: 1, PER_BED: 2 })[h.listing.pricing.basis];
     const t = trustRank(a) - trustRank(b) || basisRank(a) - basisRank(b) || budgetRank(a) - budgetRank(b);
     if (t) return t;
+    if (f.sort === "total_monthly") return effectiveMonthlyCents(a.listing).cents - effectiveMonthlyCents(b.listing).cents;
     if (f.sort === "distance" && a.distanceKm !== null && b.distanceKm !== null) return a.distanceKm - b.distanceKm;
     if (f.sort === "recently_checked") {
       const at = (h: SearchHit) => h.listing.verification.lastVerifiedAt ?? h.listing.source.lastPriceCheckAt ?? "";

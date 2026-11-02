@@ -9,7 +9,7 @@ import { useListingCache } from "../data/hooks";
 import { localOverrides, repository } from "../data/repository";
 import { supabase } from "../data/supabase";
 import { useStore } from "../state/store";
-import { validateHeldDecision, validateLandlordDecision, type AuthorityCheckRecord, type HeldDecision, type LandlordDecision } from "@housing-compass/core";
+import { editToDb, neutralLanguageIssue, validateEditRequest, validateHeldDecision, validateLandlordDecision, type AuthorityCheckRecord, type HeldDecision, type LandlordDecision, type ListingEditChanges } from "@housing-compass/core";
 import { useConversations } from "../state/conversations";
 
 export type ReviewMode = "server" | "local-demo" | "none";
@@ -209,4 +209,101 @@ export async function decideLandlordApp(mode: ReviewMode, app: LandlordApp, deci
   }
   const a = demoApps.find((x) => x.id === app.id);
   if (a) Object.assign(a, { status: decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "needs_info", reviewerNotes: notes });
+}
+
+// ───────── v0.15: manager edit requests ─────────
+export interface EditRequest {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  changes: ListingEditChanges;
+  note: string;
+  status: "open" | "approved" | "rejected";
+  createdAt: string;
+  demo: boolean;
+}
+
+const demoEdits: EditRequest[] = [];
+
+function fromDb(c: Record<string, unknown>): ListingEditChanges {
+  const out: ListingEditChanges = {};
+  if (typeof c.base_rent_cents === "number") out.baseRentCents = c.base_rent_cents;
+  if (typeof c.deposit_cents === "number") out.depositCents = c.deposit_cents;
+  if (typeof c.application_fee_cents === "number") out.applicationFeeCents = c.application_fee_cents;
+  if (typeof c.move_in_date === "string") out.moveInDate = c.move_in_date;
+  if (c.mark_leased === true) out.markLeased = true;
+  if (c.confirm_available === true) out.confirmAvailable = true;
+  return out;
+}
+
+/** Manager side: send a change request (server) or keep a labeled demo request (demo listings only). */
+export async function requestEdit(l: Listing, changes: ListingEditChanges, note: string): Promise<EditRequest> {
+  const problem = validateEditRequest(l, changes, note, now());
+  if (problem) throw new Error(problem);
+  if (supabase && !l.isDemo) {
+    const { data, error } = await supabase.rpc("request_listing_edit", { p_listing: l.id, p_changes: editToDb(changes), p_note: note.trim() });
+    if (error) throw new Error(error.code === "P0429" ? "Too many change requests today." : error.message);
+    return { id: data as string, listingId: l.id, listingTitle: l.title, changes, note, status: "open", createdAt: now().toISOString(), demo: false };
+  }
+  if (!l.isDemo) throw new Error("Change requests need the server. Only demo listings can be tried here.");
+  const r: EditRequest = { id: `demo-edit-${demoEdits.length + 1}`, listingId: l.id, listingTitle: l.title, changes, note: note.trim(), status: "open", createdAt: now().toISOString(), demo: true };
+  demoEdits.unshift(r);
+  return r;
+}
+
+export async function myEditRequests(listingIds: string[]): Promise<EditRequest[]> {
+  if (supabase && listingIds.some((id) => !id.startsWith("demo-"))) {
+    const { data } = await supabase.from("listing_edit_requests").select("id,listing_id,changes,note,status,created_at").in("listing_id", listingIds).order("created_at", { ascending: false }).limit(50);
+    return (data ?? []).map((r) => ({ id: r.id as string, listingId: r.listing_id as string, listingTitle: "", changes: fromDb(r.changes as Record<string, unknown>), note: r.note as string, status: r.status as EditRequest["status"], createdAt: r.created_at as string, demo: false }));
+  }
+  return demoEdits.filter((r) => listingIds.includes(r.listingId));
+}
+
+export async function loadEditRequests(mode: ReviewMode): Promise<EditRequest[]> {
+  if (mode === "server") {
+    const { data, error } = await supabase!.from("listing_edit_requests").select("id,listing_id,changes,note,status,created_at").eq("status", "open").order("created_at").limit(100);
+    if (error) throw new Error(error.message);
+    const out: EditRequest[] = [];
+    for (const r of data ?? []) {
+      const l = await repository.get(r.listing_id as string);
+      out.push({ id: r.id as string, listingId: r.listing_id as string, listingTitle: l?.title ?? (r.listing_id as string), changes: fromDb(r.changes as Record<string, unknown>), note: r.note as string, status: "open", createdAt: r.created_at as string, demo: false });
+    }
+    return out;
+  }
+  if (mode === "local-demo") return demoEdits.filter((r) => r.status === "open");
+  return [];
+}
+
+export async function decideEditRequest(mode: ReviewMode, r: EditRequest, approve: boolean, reason: string): Promise<void> {
+  const lang = neutralLanguageIssue(reason);
+  if (lang) throw new Error(lang);
+  if (mode === "server") {
+    const { error } = await supabase!.rpc("decide_listing_edit", { p_request: r.id, p_approve: approve, p_reason: reason.trim() });
+    if (error) throw new Error(error.message);
+    const fresh = await repository.get(r.listingId);
+    if (fresh) useListingCache.getState().put([fresh]);
+    return;
+  }
+  r.status = approve ? "approved" : "rejected";
+  if (!approve) return;
+  const l = useListingCache.getState().byId[r.listingId] ?? (await repository.get(r.listingId));
+  if (!l) return;
+  const c = r.changes;
+  const t = now().toISOString();
+  const next: Listing = {
+    ...l,
+    status: c.markLeased ? "leased" : l.status,
+    pricing: {
+      ...l.pricing,
+      baseRentCents: c.baseRentCents ?? l.pricing.baseRentCents,
+      baseRentMaxCents: c.baseRentCents !== undefined && l.pricing.baseRentMaxCents !== null && l.pricing.baseRentMaxCents < c.baseRentCents ? null : l.pricing.baseRentMaxCents,
+      depositCents: c.depositCents ?? l.pricing.depositCents,
+      applicationFeeCents: c.applicationFeeCents ?? l.pricing.applicationFeeCents,
+    },
+    lease: { ...l.lease, moveInDate: c.moveInDate ?? l.lease.moveInDate },
+    source: c.baseRentCents !== undefined || c.depositCents !== undefined || c.applicationFeeCents !== undefined ? { ...l.source, lastPriceCheckAt: t } : l.source,
+    verification: c.confirmAvailable ? { ...l.verification, availabilityConfirmedAt: t } : l.verification,
+  };
+  localOverrides.set(l.id, next);
+  useListingCache.getState().put([next]);
 }

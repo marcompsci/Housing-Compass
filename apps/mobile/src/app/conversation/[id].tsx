@@ -1,4 +1,4 @@
-import { TOUR_DAY_CHECKLIST, buildIcs, checklistProgress, messageGuard, tourEvent } from "@housing-compass/core";
+import { TOUR_DAY_CHECKLIST, buildIcs, checklistProgress, localizeChecklist, messageGuard, tourEvent } from "@housing-compass/core";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Checklist } from "../../components/Checklist";
@@ -28,7 +28,8 @@ export default function ConversationScreen() {
   const toggleCheck = usePrefs((s) => s.toggleCheck);
   const [openTour, setOpenTour] = useState<string | null>(null);
   const [calMsg, setCalMsg] = useState("");
-  const { t } = useT();
+  const { t, locale } = useT();
+  const tourItems = localizeChecklist(TOUR_DAY_CHECKLIST, locale);
   useFocusEffect(
     useCallback(() => {
       if (thread && !thread.demo) void refreshTours(thread.id);
@@ -123,7 +124,7 @@ export default function ConversationScreen() {
                     />
                     <Button kind="ghost" icon="checkbox-outline" label={`${t("tour.checklist")} (${prog.done}/${prog.total})`} onPress={() => setOpenTour(openTour === tour.id ? null : tour.id)} />
                   </View>
-                  {openTour === tour.id ? <Checklist items={TOUR_DAY_CHECKLIST} done={checks[key] ?? []} onToggle={(id) => toggleCheck(key, id)} /> : null}
+                  {openTour === tour.id ? <Checklist items={tourItems} done={checks[key] ?? []} onToggle={(id) => toggleCheck(key, id)} /> : null}
                 </View>
               ) : null}
             </View>

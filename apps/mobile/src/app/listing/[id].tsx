@@ -2,6 +2,7 @@ import {
   VERIFICATION_CHECKS,
   budgetStatus,
   categorize,
+  feeChecks,
   formatRent,
   formatUsd,
   moveInTotal,
@@ -150,6 +151,9 @@ export default function ListingDetail() {
           {l.pricing.moveInCosts?.map((c) => <KV key={c.label} k={c.label} v={formatUsd(c.amountCents)} />)}
           <KV k={t("ld.appFee")} v={l.pricing.applicationFeeCents === null ? NC : formatUsd(l.pricing.applicationFeeCents)} unknown={l.pricing.applicationFeeCents === null} />
           <KV k={t("ld.dueAtMoveIn")} v={movein.amountCents === null ? NC : formatUsd(movein.amountCents)} strong unknown={movein.amountCents === null} />
+          {feeChecks(l).map((c) => (
+            <Banner key={c.code} tone={c.severity === "warn" ? "warn" : "info"} icon="scale-outline" title={c.message} action={<Button kind="ghost" label={t("rights.learn")} onPress={() => router.push(`/rights?topic=${c.topicId}`)} />} />
+          ))}
           <Text style={type.tiny}>{t("ld.feeAdvice")}</Text>
           {l.pricing.concessions ? <KV k={t("ld.concessions")} v={l.pricing.concessions} /> : null}
           {priceMayBeOutdated(l, now()) ? <Text style={type.tiny}>{t("ld.priceOld", { date: l.source.lastPriceCheckAt ? shortDate(l.source.lastPriceCheckAt) : t("common.never") })}</Text> : null}
