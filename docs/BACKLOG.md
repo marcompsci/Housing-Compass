@@ -25,8 +25,12 @@
 ## Done in v0.16
 - Server-side keyword search, local rent rules with city sources, renter rent-payment tracker (see STATUS_REPORT)
 
-## Next ideas (after v0.16)
-20. Attach dated photos to the move-in record (on device) and include them in the shared record
+## Done in v0.17
+- Move-in photos (on device), translated move-in items, rent-increase checker (statewide cap), bills & budget
+
+## Next ideas (after v0.17)
 21. Optional encrypted backup of renter tools to the user's account (opt-in; off by default)
-22. Translate move-in checklist item names; native-speaker review of v0.16 Spanish/Chinese strings
-23. Rent-increase checker: compare a notice against the local office's published allowed increase
+22. Native-speaker review of v0.16–v0.17 Spanish/Chinese strings
+23. Local allowed-increase figures per rent board (with source and date) in the increase checker
+24. Share photos together with the move-in record (zip or PDF), still created on the device
+25. Bank-statement CSV import to mark rent and bills paid (on device, no bank login)

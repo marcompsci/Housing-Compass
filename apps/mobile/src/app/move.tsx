@@ -3,9 +3,9 @@
  * against unfair deposit deductions), then the 21-day deposit-return countdown and a factual
  * request letter at move-out. Device-only. General information, not legal advice.
  */
-import { CA_RIGHTS, ROOMS, ROOM_ITEMS, conditionProgress, conditionReport, depositRequestLetter, depositReturnStatus, type Condition, type Room } from "@housing-compass/core";
+import { CA_RIGHTS, ROOMS, ROOM_ITEMS, conditionProgress, conditionReport, depositRequestLetter, depositReturnStatus, roomItemText, type Condition, type Room } from "@housing-compass/core";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today, usd } from "../components/forms";
 import { Banner, Button, Chip, Section, Tag } from "../components/ui";
 import { now } from "../config";
@@ -13,20 +13,71 @@ import { useT } from "../i18n";
 import { saveAndShare } from "../lib/files";
 import { openExternal } from "../lib/links";
 import { useRenter } from "../state/renter";
+import { LockGate } from "../lib/lock";
+import { addConditionPhoto, deletePhotoFile, photosSupported } from "../lib/photos";
+import { Icon } from "../components/ui";
 import { color, space, type } from "../theme";
 
 const CONDITIONS: Condition[] = ["good", "worn", "damaged"];
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
 
-function ItemRow({ room, item }: { room: Room; item: string }) {
+function Photos({ k }: { k: string }) {
   const { t } = useT();
+  const photos = useRenter((s) => s.photos[k]) ?? NO_PHOTOS;
+  const addPhoto = useRenter((s) => s.addPhoto);
+  const removePhoto = useRenter((s) => s.removePhoto);
+  const [msg, setMsg] = useState<string | null>(null);
+  if (!photosSupported) return null;
+  const add = async (src: "camera" | "library") => {
+    const r = await addConditionPhoto(src);
+    if (r === "denied") setMsg(t("photo.denied"));
+    else if (r) {
+      addPhoto(k, r);
+      setMsg(null);
+    }
+  };
+  return (
+    <View style={{ gap: 6 }}>
+      {photos.length ? (
+        <View style={formStyles.row}>
+          {photos.map((p) => (
+            <View key={p.uri}>
+              <Image source={{ uri: p.uri }} style={styles.thumb} accessibilityLabel={t("photo.taken", { date: p.at.slice(0, 10) })} />
+              <Pressable
+                onPress={() => {
+                  removePhoto(k, p.uri);
+                  deletePhotoFile(p.uri);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t("photo.remove")}
+                hitSlop={8}
+                style={styles.thumbX}
+              >
+                <Icon name="close-circle" size={20} tint={color.danger} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      <View style={formStyles.row}>
+        <Chip icon="camera-outline" label={t("photo.take")} onPress={() => void add("camera")} />
+        <Chip icon="images-outline" label={t("photo.pick")} onPress={() => void add("library")} />
+      </View>
+      {msg ? <Text style={type.tiny}>{msg}</Text> : null}
+    </View>
+  );
+}
+const NO_PHOTOS: Array<{ uri: string; at: string }> = [];
+
+function ItemRow({ room, item }: { room: Room; item: string }) {
+  const { t, locale } = useT();
   const entry = useRenter((s) => s.condition.find((c) => c.room === room && c.item === item));
   const record = useRenter((s) => s.recordCondition);
   const [note, setNote] = useState(entry?.note ?? "");
   const save = (condition: Condition, n = note) => record({ room, item, condition, note: n.trim().slice(0, 200), at: now().toISOString() });
   return (
     <View style={styles.item} testID="condition-item">
-      <Text style={type.h3}>{item}</Text>
+      <Text style={type.h3}>{roomItemText(item, locale)}</Text>
       <View style={formStyles.row}>
         {CONDITIONS.map((c) => (
           <Chip key={c} label={t(`move.c.${c}`)} selected={entry?.condition === c} onPress={() => save(c)} />
@@ -35,6 +86,7 @@ function ItemRow({ room, item }: { room: Room; item: string }) {
       {entry && entry.condition !== "good" ? (
         <Field label={t("move.whatsWrong")} value={note} onChangeText={setNote} onBlur={() => save(entry.condition)} placeholder={t("move.whatsWrongPh")} />
       ) : null}
+      {entry && entry.condition !== "good" ? <Photos k={`${room}:${item}`} /> : null}
     </View>
   );
 }
@@ -93,7 +145,14 @@ function MoveInSection() {
         label={t("move.exportRecord")}
         disabled={!condition.length}
         testID="movein-export"
-        onPress={() => void saveAndShare(`move-in-record-${moveIn.moveInDate}.txt`, conditionReport(condition, moveIn, now()), "text/plain", "public.plain-text")}
+        onPress={() => {
+          const photos = useRenter.getState().photos;
+          const withPhotos = condition.map((c) => {
+            const ps = photos[`${c.room}:${c.item}`] ?? [];
+            return ps.length ? { ...c, note: `${c.note}${c.note ? "; " : ""}${ps.length} photo${ps.length > 1 ? "s" : ""} on file (${ps.map((p) => p.at.slice(0, 10)).join(", ")})` } : c;
+          });
+          void saveAndShare(`move-in-record-${moveIn.moveInDate}.txt`, conditionReport(withPhotos, moveIn, now()), "text/plain", "public.plain-text");
+        }}
       />
       <Button kind="ghost" icon="trash-outline" label={t("move.resetIn")} onPress={() => setMoveIn(null)} />
     </Section>
@@ -169,6 +228,14 @@ function MoveOutSection() {
 }
 
 export default function Move() {
+  return (
+    <LockGate>
+      <MoveScreen />
+    </LockGate>
+  );
+}
+
+function MoveScreen() {
   const { t } = useT();
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="move">
@@ -185,5 +252,7 @@ export default function Move() {
 const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
   item: { gap: 6, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
+  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: color.neutralSoft },
+  thumbX: { position: "absolute", top: -6, right: -6, backgroundColor: color.surface, borderRadius: 10 },
   countdown: { ...formStyles.card, borderWidth: 2, borderColor: color.brand },
 });

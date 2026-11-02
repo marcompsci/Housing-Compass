@@ -3,7 +3,7 @@
  * history as a spreadsheet (for a landlord reference or a rent-reporting service), and turn on
  * local reminders. Device-only; nothing here is uploaded.
  */
-import { paymentTiming, paymentsCsv, rentSummary, validatePayment, type RentPayment } from "@housing-compass/core";
+import { MILESTONES, milestoneProgress, paymentHistorySummary, paymentTiming, paymentsCsv, rentSummary, validatePayment, type RentPayment } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -13,6 +13,7 @@ import { now } from "../config";
 import { useT } from "../i18n";
 import { saveAndShare } from "../lib/files";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
+import { LockGate } from "../lib/lock";
 import { useRenter } from "../state/renter";
 import { color, space, type } from "../theme";
 
@@ -101,7 +102,57 @@ function LogPayment() {
   );
 }
 
+function Milestones({ streak }: { streak: number }) {
+  const { t } = useT();
+  const m = milestoneProgress(streak);
+  return (
+    <Section title={t("ms.title")}>
+      <View style={formStyles.row} testID="milestones">
+        {MILESTONES.map((x) => {
+          const got = m.reached.includes(x);
+          return (
+            <View key={x} style={[styles.badge, got && styles.badgeOn]} accessibilityLabel={t(got ? "ms.reached" : "ms.locked", { n: x })}>
+              <Icon name={got ? "trophy" : "trophy-outline"} size={20} tint={got ? color.brandInk : color.muted} />
+              <Text style={[type.tiny, { fontWeight: "800", color: got ? color.brandInk : color.muted }]}>{t("ms.months", { n: x })}</Text>
+            </View>
+          );
+        })}
+      </View>
+      <Text style={type.small}>{m.next ? t("ms.toNext", { n: m.toNext, next: m.next }) : t("ms.all")}</Text>
+    </Section>
+  );
+}
+
+function HistoryLetter() {
+  const { t } = useT();
+  const setup = useRenter((s) => s.rentSetup)!;
+  const payments = useRenter((s) => s.payments);
+  const moveIn = useRenter((s) => s.moveIn);
+  const [name, setName] = useState("");
+  return (
+    <Section title={t("hist.title")}>
+      <Text style={type.small}>{t("hist.body")}</Text>
+      <Field label={t("move.yourName")} value={name} onChangeText={setName} />
+      <Button
+        kind="secondary"
+        icon="document-text-outline"
+        label={t("hist.make")}
+        testID="history-letter"
+        onPress={() => void saveAndShare(`rent-history-${today(now())}.txt`, paymentHistorySummary(setup, payments, { tenantName: name.trim(), address: moveIn?.address ?? "" }, now()), "text/plain", "public.plain-text")}
+      />
+    </Section>
+  );
+}
+
 export default function Rent() {
+  return (
+    <LockGate>
+      <RentScreen />
+    </LockGate>
+  );
+}
+
+function RentScreen() {
   const { t } = useT();
   const setup = useRenter((s) => s.rentSetup);
   const payments = useRenter((s) => s.payments);
@@ -186,6 +237,9 @@ export default function Rent() {
         <KV k={t("rent.totalLogged")} v={usd(s.totalPaidCents)} />
       </Section>
 
+      <Milestones streak={s.onTimeStreak} />
+      {payments.length ? <HistoryLetter /> : null}
+
       <Section title={t("rent.remTitle")}>
         <Text style={type.small}>{t("rent.remBody")}</Text>
         <Button kind={remindersOn ? "secondary" : "primary"} icon={remindersOn ? "notifications-off-outline" : "notifications-outline"} label={remindersOn ? t("rent.remTurnOff") : t("rent.remTurnOn")} onPress={toggleReminders} testID="rent-reminders" />
@@ -206,5 +260,7 @@ export default function Rent() {
 const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
   hero: { ...formStyles.card, borderWidth: 2, borderColor: color.brand, gap: 8 },
+  badge: { alignItems: "center", gap: 2, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: color.neutralSoft, minWidth: 64 },
+  badgeOn: { backgroundColor: color.brand },
   payRow: { flexDirection: "row", gap: 10, alignItems: "center", paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
 });

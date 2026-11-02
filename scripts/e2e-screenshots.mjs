@@ -556,6 +556,69 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
   await page.getByRole("button", { name: "English" }).click();
 }
 
+// ── v0.17: bills & budget, rent increase checker, milestones, history summary, translated move-in items
+{
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("tool-bills").click();
+  await page.getByTestId("bills").waitFor();
+  const day = new Date().getUTCDate();
+  const soonDay = ((day + 1) % 28) + 1;
+  await page.getByTestId("bill-name").fill("Phone");
+  await page.getByTestId("bill-amount").fill("65");
+  await page.getByTestId("bill-day").fill(String(soonDay));
+  await page.getByTestId("bill-add").click();
+  await page.getByTestId("bill-name").fill("PG&E");
+  await page.getByTestId("bill-amount").fill("90");
+  await page.getByTestId("bill-day").fill("20");
+  await page.getByRole("button", { name: "Paid automatically (autopay)" }).click();
+  await page.getByTestId("bill-add").click();
+  check((await page.getByTestId("bill-row").count()) === 2, "bills are added and listed by due date");
+  await page.getByLabel("Mark Phone paid this month").click();
+  check((await page.getByText("Paid", { exact: true }).count()) >= 1, "a bill can be checked off for the month");
+  await page.getByLabel("Mark Phone paid this month").click();
+  await page.getByTestId("take-home").fill("4000");
+  await page.getByTestId("take-home-save").click();
+  await page.getByTestId("budget").waitFor();
+  check(/\$2,445/.test(await page.getByTestId("budget").innerText()), "budget shows what's left after rent and bills");
+  check((await page.getByTestId("bills-calendar").count()) === 1, "due dates can be added to the calendar");
+  await page.getByTestId("bill-row").first().scrollIntoViewIfNeeded();
+  await shot("50-bills");
+
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Phone · \$65/).count()) >= 1, "My plan includes upcoming bills");
+
+  await page.goto(`${base}/rent-increase`);
+  await page.getByTestId("inc-current").fill("2000");
+  await page.getByTestId("inc-new").fill("2240");
+  await page.getByTestId("inc-cpi").fill("3");
+  await page.getByTestId("inc-notice").fill("2026-11-01");
+  await page.getByTestId("inc-effective").fill("2026-12-01");
+  await page.getByTestId("inc-check").click();
+  await page.getByTestId("inc-result").waitFor();
+  const inc = await page.getByTestId("inc-result").innerText();
+  check(/12%/.test(inc) && /above the statewide cap/.test(inc) && /less notice than the law requires/.test(inc), "rent increase checker flags an increase over the cap and short notice");
+  await shot("51-rent-increase", true);
+
+  await page.goto(`${base}/rent`);
+  await page.getByTestId("milestones").waitFor();
+  check((await page.getByLabel("1-month milestone reached").count()) === 1 && (await page.getByText(/2 more on-time months to reach 3 months/).count()) === 1, "on-time milestones show progress");
+  check((await page.getByTestId("history-letter").count()) === 1, "rent history summary for applications");
+  await page.getByTestId("milestones").scrollIntoViewIfNeeded();
+  await shot("52-milestones");
+
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "Español" }).click();
+  await page.goto(`${base}/move`);
+  await page.getByText("Puerta de entrada y cerradura").waitFor();
+  check(true, "move-in checklist items are translated");
+  await page.goto(`${base}/plan`);
+  await page.getByText("Facturas y presupuesto").first().waitFor();
+  check((await page.getByText(/Vence en \d+ días|Vence hoy/).count()) >= 1, "My plan details are translated");
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "English" }).click();
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

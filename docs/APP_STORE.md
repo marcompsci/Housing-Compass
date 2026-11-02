@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.16). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.17). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -27,8 +27,13 @@ PAY RENT ON TIME AND BUILD YOUR RECORD
 • Get reminders 3 days before rent is due and on the due date.
 • Export your payment history as a spreadsheet for a future landlord or a rent-reporting service.
 
+KEEP EVERY BILL ON TRACK
+• Add your phone, utilities, insurance and other bills next to rent and check them off each month.
+• See what's left of your take-home pay after rent and bills.
+• Check a rent-increase notice against California's statewide cap.
+
 PROTECT YOUR DEPOSIT
-• Make a dated, room-by-room move-in condition record.
+• Make a dated, room-by-room move-in condition record with photos.
 • After you move out, count down the 21 days California gives a landlord to return your deposit, and create a request letter.
 
 STAY ON TOP OF EVERYTHING
@@ -37,7 +42,7 @@ STAY ON TOP OF EVERYTHING
 • Find your city's official rent board and free tenant help.
 
 PRIVATE BY DESIGN
-• Your rent payments, notes, income and waitlists stay on your phone.
+• Your rent payments, bills, photos, notes, income and waitlists stay on your phone, with an optional Face ID lock.
 • Your location is used once, approximately, and never stored on our servers.
 • No ads, no tracking.
 

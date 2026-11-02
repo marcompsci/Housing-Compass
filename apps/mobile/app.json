@@ -3,7 +3,7 @@
     "name": "Housing Compass",
     "slug": "housing-compass",
     "scheme": "housingcompass",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -106,7 +106,21 @@
         }
       ],
       "@maplibre/maplibre-react-native",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Housing Compass lets you attach photos to your move-in condition record. Photos stay on your phone.",
+          "cameraPermission": "Housing Compass lets you photograph your home's condition at move-in. Photos stay on your phone.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Housing Compass can use Face ID to lock your rent, bills and move-in records."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

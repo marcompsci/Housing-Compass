@@ -4,7 +4,7 @@
  * when the user turns reminders on. On the web there are no scheduled notifications; the
  * "My plan" tab shows the same items instead.
  */
-import { reminderSchedule, type ReminderPlan } from "@housing-compass/core";
+import { billReminders, billStatuses, reminderSchedule, type ReminderPlan } from "@housing-compass/core";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -49,7 +49,9 @@ export function currentReminderPlans(): ReminderPlan[] {
   const r = useRenter.getState();
   const tours = useConversations.getState().threads.flatMap((t) => t.tours.map((x) => ({ id: x.id, threadId: t.id, title: t.title, startsAt: x.startsAt, status: x.status })));
   const n = now();
-  return reminderSchedule({ rent: r.rentSetup ? { setup: r.rentSetup, payments: r.payments } : null, tours, now: n, utcOffsetMinutes: -n.getTimezoneOffset() });
+  const offset = -n.getTimezoneOffset();
+  const base = reminderSchedule({ rent: r.rentSetup ? { setup: r.rentSetup, payments: r.payments } : null, tours, now: n, utcOffsetMinutes: offset });
+  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset)].sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /** Keeps the scheduled reminders in step with rent, payments and tours. Mounted once in the root layout. */
@@ -58,6 +60,8 @@ export function useReminderSync() {
   const setup = useRenter((s) => s.rentSetup);
   const payments = useRenter((s) => s.payments);
   const threads = useConversations((s) => s.threads);
+  const bills = useRenter((s) => s.bills);
+  const billPaid = useRenter((s) => s.billPaid);
   useEffect(() => {
     if (!remindersSupported) return;
     const id = setTimeout(() => {
@@ -66,5 +70,5 @@ export function useReminderSync() {
       );
     }, 500);
     return () => clearTimeout(id);
-  }, [on, setup, payments, threads]);
+  }, [on, setup, payments, threads, bills, billPaid]);
 }

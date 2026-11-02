@@ -11,6 +11,10 @@ export interface CalendarEvent {
   location?: string | null;
   description?: string | null;
   url?: string | null;
+  /** All-day event on the date of startsAt (YYYY-MM-DD…); durationMinutes is ignored. */
+  allDay?: boolean;
+  /** RFC 5545 RRULE value, e.g. "FREQ=MONTHLY;BYMONTHDAY=1". */
+  rrule?: string | null;
   /** Minutes before the start for a reminder; null = none. */
   alarmMinutesBefore?: number | null;
 }
@@ -46,17 +50,18 @@ const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}
 export function buildIcs(events: CalendarEvent[], now: Date): string {
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Housing Compass//Tours//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
   for (const e of events) {
-    const start = new Date(e.startsAt);
+    const start = new Date(e.allDay ? `${e.startsAt.slice(0, 10)}T00:00:00Z` : e.startsAt);
     if (Number.isNaN(start.getTime())) throw new Error(`invalid start time for ${e.uid}`);
-    const end = new Date(start.getTime() + Math.max(5, e.durationMinutes) * 60_000);
-    lines.push(
-      "BEGIN:VEVENT",
-      `UID:${e.uid.replace(/[^A-Za-z0-9@._-]/g, "")}@housingcompass`,
-      `DTSTAMP:${stamp(now)}`,
-      `DTSTART:${stamp(start)}`,
-      `DTEND:${stamp(end)}`,
-      `SUMMARY:${icsEscape(e.title)}`,
-    );
+    const dateOnly = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, "");
+    lines.push("BEGIN:VEVENT", `UID:${e.uid.replace(/[^A-Za-z0-9@._-]/g, "")}@housingcompass`, `DTSTAMP:${stamp(now)}`);
+    if (e.allDay) {
+      lines.push(`DTSTART;VALUE=DATE:${dateOnly(start)}`, `DTEND;VALUE=DATE:${dateOnly(new Date(start.getTime() + 86_400_000))}`);
+    } else {
+      const end = new Date(start.getTime() + Math.max(5, e.durationMinutes) * 60_000);
+      lines.push(`DTSTART:${stamp(start)}`, `DTEND:${stamp(end)}`);
+    }
+    if (e.rrule && /^FREQ=[A-Z]+(;[A-Z]+=[-A-Z0-9,]+)*$/.test(e.rrule)) lines.push(`RRULE:${e.rrule}`);
+    lines.push(`SUMMARY:${icsEscape(e.title)}`);
     if (e.location) lines.push(`LOCATION:${icsEscape(e.location)}`);
     if (e.description) lines.push(`DESCRIPTION:${icsEscape(e.description)}`);
     if (e.url && /^https:\/\//.test(e.url)) lines.push(`URL:${e.url}`);

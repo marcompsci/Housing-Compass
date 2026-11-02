@@ -1,4 +1,28 @@
-# Status report — v0.16 (2026-11-02): 10 more phases — pay rent on time, build credit, protect your deposit
+# Status report — v0.17 (2026-11-02): 10 more phases — every bill on time, a budget that adds up
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Bills tracker | Add utilities, phone, internet, insurance, car, card, loan and subscription bills (amount, due day, autopay); check them off each month; due-soon and late flags. | `core/bills.ts`; Plan → Bills & budget |
+| 2 | Bills in My plan + reminders | Upcoming bills show in My plan; bills not on autopay get the same local reminders as rent (3 days before and on the day). | `billPlanItems`, `billReminders` |
+| 3 | Monthly budget | Take-home pay vs rent + bills: what's left, rent share, "tight"/"short" warnings, 30% note. Device only. | Bills & budget → My month |
+| 4 | Rent increase checker | Checks a notice against California's statewide cap (5% + regional CPI, max 10%; Civ. Code §1947.12) and notice period (30/90 days; §827), with exemptions and a link to local offices. Not legal advice. | Plan → Rent increase checker |
+| 5 | Rent history summary | One-page, clearly self-prepared summary of on-time months for rental applications. | Rent tracker |
+| 6 | On-time milestones | 1, 3, 6, 12 and 24-month badges and "N more months" progress. | Rent tracker |
+| 7 | Calendar export | One .ics with monthly recurring all-day events for rent and every bill (correct on short months), with a 3-day alert. | Bills & budget |
+| 8 | Move-in photos | Take or choose photos for worn/damaged items; copied into the app's private folder, never uploaded, no location data; counted in the shared record; deleted by "Clear this device". | Move in & move out (phone app) |
+| 9 | Face ID / passcode lock | Optional lock for rent, bills, move-in and waitlists; unlock lasts until the app goes to the background. | Plan → Lock my renter tools (phone app) |
+| 10 | Translations | Move-in checklist items and My plan details in Spanish and Chinese; all new screens in en/es/zh. | `ROOM_ITEM_TEXT`, `strings.ts` |
+
+New native modules: `expo-image-picker`, `expo-local-authentication` (the iPhone app needs a rebuild). Permission text explains that photos stay on the phone; no microphone access.
+
+### Tests (all passing)
+- Core: 186 unit tests (10 new)
+- Database: 22 SQL sections + 5 contract tests (no schema change this round)
+- Browser e2e: 97 checks (10 new), screenshots 50–52
+
+---
+
+## Previous: v0.16 (2026-11-02): 10 more phases — pay rent on time, build credit, protect your deposit
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

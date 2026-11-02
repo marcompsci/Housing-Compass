@@ -12,6 +12,7 @@ import { Banner, Button, Chip, Section, Tag } from "../components/ui";
 import { now } from "../config";
 import { useT } from "../i18n";
 import { useRenter } from "../state/renter";
+import { LockGate } from "../lib/lock";
 import { color, space, type } from "../theme";
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
@@ -53,6 +54,14 @@ function Card({ w }: { w: WaitlistEntry }) {
 }
 
 export default function Waitlists() {
+  return (
+    <LockGate>
+      <WaitlistsScreen />
+    </LockGate>
+  );
+}
+
+function WaitlistsScreen() {
   const { t } = useT();
   const waitlists = useRenter((s) => s.waitlists);
   const add = useRenter((s) => s.addWaitlist);

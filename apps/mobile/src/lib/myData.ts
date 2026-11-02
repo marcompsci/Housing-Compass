@@ -13,6 +13,7 @@ import { saveAndShare } from "./files";
 import { useSavedCopies } from "../data/savedCopies";
 import { useRenter } from "../state/renter";
 import { cancelAllReminders } from "./reminders";
+import { deleteAllPhotos } from "./photos";
 
 export async function exportMyData(signedIn: boolean): Promise<string> {
   const s = useStore.getState();
@@ -37,7 +38,7 @@ export async function exportMyData(signedIn: boolean): Promise<string> {
       household: useHousehold.getState().profile,
       notes: s.notes,
       savedAreas: s.savedAreas,
-      renter: (({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches }) => ({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches }))(useRenter.getState()),
+      renter: (({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches, bills, billPaid, takeHomeCents, photos }) => ({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches, bills, billPaid, takeHomeCents, photoCount: Object.values(photos).flat().length }))(useRenter.getState()),
     },
     server,
     now(),
@@ -57,5 +58,6 @@ export async function clearThisDevice(): Promise<void> {
   useHousehold.getState().set(null);
   usePrefs.setState({ checklists: {}, savings: null, onboarded: false });
   useRenter.getState().clearAll();
+  deleteAllPhotos();
   await cancelAllReminders();
 }

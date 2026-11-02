@@ -52,6 +52,8 @@ export default function RootLayout() {
         <Stack.Screen name="move" options={{ title: "Move in & move out" }} />
         <Stack.Screen name="waitlists" options={{ title: "Program waitlists" }} />
         <Stack.Screen name="local-help" options={{ title: "Local rent rules & help" }} />
+        <Stack.Screen name="bills" options={{ title: "Bills & budget" }} />
+        <Stack.Screen name="rent-increase" options={{ title: "Rent increase checker" }} />
       </Stack>
     </SafeAreaProvider>
   );

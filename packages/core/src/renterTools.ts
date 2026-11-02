@@ -193,13 +193,16 @@ export function waitlistAttention(w: WaitlistEntry, now: Date): "check_in_overdu
 
 // ───────── "What's next" plan ─────────
 export interface PlanItem {
-  kind: "rent_due" | "tour" | "app_deadline" | "deposit_return" | "waitlist_check_in" | "follow_up";
+  kind: "rent_due" | "tour" | "app_deadline" | "deposit_return" | "waitlist_check_in" | "follow_up" | "bill_due";
   date: string;
   title: string;
   detail: string;
   /** Route in the app to act on it. */
   href: string;
   urgent: boolean;
+  /** Machine-readable detail so the app can translate it (detail stays as English text). */
+  detailCode?: "in_days" | "due_today" | "days_late" | "overdue_days" | "check_in_soon" | "check_in_overdue" | "official_application" | "your_reminder" | "autopay";
+  n?: number;
   /** Exact start time (ISO), for items that have one, so the app can show it in local time. */
   at?: string;
 }
@@ -212,6 +215,8 @@ export interface PlanInput {
   waitlists: WaitlistEntry[];
   now: Date;
   horizonDays?: number;
+  /** Extra items computed elsewhere (e.g. bills). */
+  extra?: PlanItem[];
 }
 
 export function buildPlan(i: PlanInput): PlanItem[] {
@@ -224,7 +229,7 @@ export function buildPlan(i: PlanInput): PlanItem[] {
   };
   if (i.rent) {
     const s = rentSummary(i.rent.setup, i.rent.payments, i.now);
-    out.push({ kind: "rent_due", date: s.nextDue, title: `Rent due · $${(i.rent.setup.amountCents / 100).toLocaleString("en-US")}`, detail: s.daysUntilDue < 0 ? `${-s.daysUntilDue} days late — pay and log it` : s.daysUntilDue === 0 ? "Due today" : `In ${s.daysUntilDue} days`, href: "/rent", urgent: s.daysUntilDue <= 2 });
+    out.push({ kind: "rent_due", date: s.nextDue, title: `Rent due · $${(i.rent.setup.amountCents / 100).toLocaleString("en-US")}`, detail: s.daysUntilDue < 0 ? `${-s.daysUntilDue} days late — pay and log it` : s.daysUntilDue === 0 ? "Due today" : `In ${s.daysUntilDue} days`, detailCode: s.daysUntilDue < 0 ? "days_late" : s.daysUntilDue === 0 ? "due_today" : "in_days", n: Math.abs(s.daysUntilDue), href: "/rent", urgent: s.daysUntilDue <= 2 });
   }
   for (const t of i.tours.filter((x) => x.status === "confirmed" || x.status === "proposed")) {
     if (!within(t.startsAt)) continue;
@@ -232,20 +237,21 @@ export function buildPlan(i: PlanInput): PlanItem[] {
   }
   for (const a of i.applications) {
     if (a.deadline && !["applied", "leased", "declined", "withdrawn"].includes(a.status) && within(a.deadline)) {
-      out.push({ kind: "app_deadline", date: a.deadline.slice(0, 10), title: `Application deadline: ${a.title}`, detail: "Submit through the official application", href: "/applications", urgent: atNoonUtc(a.deadline.slice(0, 10)).getTime() - today <= 2 * DAY });
+      out.push({ kind: "app_deadline", date: a.deadline.slice(0, 10), title: `Application deadline: ${a.title}`, detail: "Submit through the official application", detailCode: "official_application", href: "/applications", urgent: atNoonUtc(a.deadline.slice(0, 10)).getTime() - today <= 2 * DAY });
     }
     if (a.nextActionAt && within(a.nextActionAt)) {
-      out.push({ kind: "follow_up", date: a.nextActionAt.slice(0, 10), title: `Follow up: ${a.title}`, detail: "Reminder you set", href: "/applications", urgent: false });
+      out.push({ kind: "follow_up", date: a.nextActionAt.slice(0, 10), title: `Follow up: ${a.title}`, detail: "Reminder you set", detailCode: "your_reminder", href: "/applications", urgent: false });
     }
   }
   if (i.moveOut) {
     const d = depositReturnStatus(i.moveOut.moveOutDate, i.now);
-    out.push({ kind: "deposit_return", date: d.deadline, title: "Security deposit due back", detail: d.state === "overdue" ? `${-d.daysLeft} days overdue — send a written request` : `In ${d.daysLeft} days`, href: "/move", urgent: d.state !== "waiting" });
+    out.push({ kind: "deposit_return", date: d.deadline, title: "Security deposit due back", detail: d.state === "overdue" ? `${-d.daysLeft} days overdue — send a written request` : `In ${d.daysLeft} days`, detailCode: d.state === "overdue" ? "overdue_days" : "in_days", n: Math.abs(d.daysLeft), href: "/move", urgent: d.state !== "waiting" });
   }
   for (const w of i.waitlists) {
     const a = waitlistAttention(w, i.now);
-    if (a && w.nextCheckIn) out.push({ kind: "waitlist_check_in", date: w.nextCheckIn, title: `Confirm your spot: ${w.programName}`, detail: a === "check_in_overdue" ? "Check-in date passed — contact the program" : "Check-in due soon", href: "/waitlists", urgent: true });
+    if (a && w.nextCheckIn) out.push({ kind: "waitlist_check_in", date: w.nextCheckIn, title: `Confirm your spot: ${w.programName}`, detail: a === "check_in_overdue" ? "Check-in date passed — contact the program" : "Check-in due soon", detailCode: a, href: "/waitlists", urgent: true });
   }
+  out.push(...(i.extra ?? []));
   return out.sort((a, b) => a.date.localeCompare(b.date) || Number(b.urgent) - Number(a.urgent));
 }
 
