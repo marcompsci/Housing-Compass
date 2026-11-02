@@ -22,7 +22,11 @@
 15. Application portability info (reusable screening reports) once counsel confirms the rules
 16. Next.js server-rendered listing pages for SEO (reusing `packages/core`)
 
-## Next ideas (after v0.15)
-17. Server-side keyword search (`search_listings(p_query)`) once inventory grows past one page
-18. Local rent-control rules (LA RSO, SF/Oakland/Berkeley rent boards) on the rights screen, with city sources
-19. Renters' own rent-payment tracker that pairs with positive rent reporting (credit building)
+## Done in v0.16
+- Server-side keyword search, local rent rules with city sources, renter rent-payment tracker (see STATUS_REPORT)
+
+## Next ideas (after v0.16)
+20. Attach dated photos to the move-in record (on device) and include them in the shared record
+21. Optional encrypted backup of renter tools to the user's account (opt-in; off by default)
+22. Translate move-in checklist item names; native-speaker review of v0.16 Spanish/Chinese strings
+23. Rent-increase checker: compare a notice against the local office's published allowed increase

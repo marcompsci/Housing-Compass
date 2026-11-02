@@ -610,3 +610,17 @@ reset role;
 -- restore for the DB↔app contract tests that run next
 update listings set status = 'active' where id = 'lead-oakland-801-14th-st';
 select 'V0.15 TESTS PASSED' as result;
+
+-- §22 v0.16: server-side keyword search
+set role anon;
+do $$ declare n_all int; n_q int; begin
+  select count(*) into n_all from search_listings('ENTIRE_1BR', true);
+  select count(*) into n_q from search_listings('ENTIRE_1BR', true, p_query => '14TH  oakland');
+  assert n_q >= 1 and n_q <= n_all, 'query narrows results';
+  assert exists (select 1 from search_listings('ENTIRE_1BR', true, p_query => 'Oakland 14th') d where d->>'id' = 'lead-oakland-801-14th-st'), 'all words matched in any order';
+  assert not exists (select 1 from search_listings('ENTIRE_1BR', true, p_query => 'oakland zzqqxx')), 'every word must match';
+  assert (select count(*) from search_listings('ENTIRE_1BR', true, p_query => '   ')) = n_all, 'blank query ignored';
+  assert search_text_norm('Peñasquitos  Café!') = 'penasquitos cafe', 'accents and punctuation folded';
+end $$;
+reset role;
+select 'V0.16 TESTS PASSED' as result;

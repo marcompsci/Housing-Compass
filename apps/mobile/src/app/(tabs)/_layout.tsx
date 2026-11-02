@@ -24,6 +24,7 @@ export default function TabsLayout() {
         name="saved"
         options={{ title: t("tab.saved"), tabBarBadge: saved || undefined, tabBarIcon: ({ color: c, size }) => <Ionicons name="heart-outline" size={size} color={c as string} /> }}
       />
+      <Tabs.Screen name="plan" options={{ title: t("tab.plan"), tabBarIcon: ({ color: c, size }) => <Ionicons name="calendar-outline" size={size} color={c as string} /> }} />
       <Tabs.Screen
         name="applications"
         options={{ title: t("tab.applications"), tabBarIcon: ({ color: c, size }) => <Ionicons name="document-text-outline" size={size} color={c as string} /> }}

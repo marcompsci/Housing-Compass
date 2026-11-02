@@ -41,3 +41,5 @@ export * from "./dataExport";
 export * from "./rights";
 export * from "./managerEdits";
 export * from "./checklistText";
+export * from "./renterTools";
+export * from "./localRules";

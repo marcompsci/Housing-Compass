@@ -7,12 +7,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthBootstrap } from "../auth/session";
 import { usePriceWatcher } from "../state/priceHistory";
 import { useSavedCopyWatcher } from "../data/savedCopies";
+import { useReminderSync } from "../lib/reminders";
 import { color } from "../theme";
 
 export default function RootLayout() {
   useAuthBootstrap();
   usePriceWatcher();
   useSavedCopyWatcher();
+  useReminderSync();
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -46,6 +48,10 @@ export default function RootLayout() {
         <Stack.Screen name="landlord-dashboard" options={{ title: "Your listings" }} />
         <Stack.Screen name="rights" options={{ title: "Know your rights (CA)" }} />
         <Stack.Screen name="my-reports" options={{ title: "Reports I sent" }} />
+        <Stack.Screen name="rent" options={{ title: "Rent tracker" }} />
+        <Stack.Screen name="move" options={{ title: "Move in & move out" }} />
+        <Stack.Screen name="waitlists" options={{ title: "Program waitlists" }} />
+        <Stack.Screen name="local-help" options={{ title: "Local rent rules & help" }} />
       </Stack>
     </SafeAreaProvider>
   );

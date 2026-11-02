@@ -1,4 +1,28 @@
-# Status report — v0.15 (2026-11-02): 10 more phases
+# Status report — v0.16 (2026-11-02): 10 more phases — pay rent on time, build credit, protect your deposit
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Rent tracker | Set rent amount, due day, grace days and payee; log each payment (month, date, amount, method, confirmation). Shows next due date, days left or late, on-time streak and months on time. Split payments count once they add up. | `core/renterTools.ts`; Plan → Rent tracker |
+| 2 | Reminders | Local notifications 3 days before rent is due and at 9am on the due day, and 1 hour before confirmed tours. Scheduled on the phone (works offline, nothing sent to a server); permission asked only when turned on; kept in sync as rent, payments and tours change. Web shows the same items in My plan. | `lib/reminders.ts` |
+| 3 | Payment history export | CSV of every payment with due date and on-time flag, for a landlord reference or a rent-reporting service. Spreadsheet formulas are neutralized. | Rent tracker → Export |
+| 4 | Move-in condition record | Room-by-room checklist (good / worn / damaged + note, each dated), progress and damage count, and a shareable text record. | Plan → Move in & move out |
+| 5 | Deposit-return countdown | 21 days from move-out (Civ. Code §1950.5), receipts over $125, photos rule, bad-faith penalty; a factual request letter to share. General information, not legal advice. | same screen |
+| 6 | Local rent rules & help | Official offices only: SF Rent Board, Oakland RAP, Berkeley Rent Board, San José Rent Stabilization, LA City RSO (LAHD), LA County DCBA, plus the statewide fallback — website and tap-to-call. | `core/localRules.ts`; Help, Plan |
+| 7 | Program waitlists | Track Section 8 / public housing / building waitlists: joined date, confirmation number, next check-in, status. Flags check-ins due within a week or overdue. | Plan → Program waitlists |
+| 8 | My plan tab | One list of the next 30 days: rent due, tours (local time), application deadlines and follow-ups, deposit due back, waitlist check-ins — urgent items flagged. | new Plan tab |
+| 9 | Server keyword search + recent searches | `search_listings(..., p_query)` filters on the server (every word must match; case/accents ignored) so results aren't cut off at the row limit; the last 6 searches show as chips on Explore (device only). | migration `20261105000000_v016.sql` |
+| 10 | App Store readiness | iOS privacy manifest (no tracking; email, coarse location and user content for app functionality only; required-reason APIs), export-compliance flag, permission text checked by a test. | `app.json`, `core/localRules.ts` `PRIVACY_DECLARATION` |
+
+Privacy: rent payments, move-in/out records, waitlists and recent searches never leave the device. They're included in "Download my data" and removed by "Clear this device" (which also cancels scheduled reminders).
+
+### Tests (all passing)
+- Core: 176 unit tests (18 new)
+- Database: 22 SQL sections (new §22: server keyword search) + 5 contract tests
+- Browser e2e: 87 checks (14 new), screenshots 44–49
+
+---
+
+## Previous: v0.15 (2026-11-02): 10 more phases
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

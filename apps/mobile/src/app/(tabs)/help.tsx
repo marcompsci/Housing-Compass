@@ -45,6 +45,7 @@ export default function Help() {
 
         <Button kind="secondary" icon="calculator-outline" label={t("help.myNumbers")} onPress={() => router.push("/affordability")} />
         <Button kind="secondary" icon="school-outline" label={t("help.rights")} onPress={() => router.push("/rights")} testID="rights-link" />
+        <Button kind="secondary" icon="business-outline" label={t("help.localHelp")} onPress={() => router.push("/local-help")} testID="local-help-link" />
 
         <Section title={t("help.labels")}>
           {VERIFICATION_LEVELS.map((lvl) => {

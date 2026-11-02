@@ -479,6 +479,83 @@ await page.getByTestId("my-reports-link").click();
 await page.getByTestId("my-reports").waitFor();
 check((await page.getByText(/Saved on this device|You haven't reported any listings/).count()) >= 1, "reports screen shows each report's status");
 
+// ── v0.16: My plan, rent tracker, move in/out, waitlists, local help, recent searches
+{
+  const iso = (d) => d.toISOString().slice(0, 10);
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan").waitFor();
+  check((await page.getByText("My plan", { exact: true }).count()) >= 1 && (await page.getByTestId("tool-rent").count()) === 1, "My plan tab lists renter tools");
+  await shot("44-plan-empty");
+  await page.getByTestId("tool-rent").click();
+  await page.getByTestId("rent-amount").fill("1400");
+  await page.getByTestId("rent-due-day").fill(String(new Date().getUTCDate()));
+  await page.getByTestId("rent-save-setup").click();
+  await page.getByTestId("rent-summary").waitFor();
+  await page.getByTestId("pay-add").click();
+  await page.getByTestId("pay-msg").waitFor();
+  check((await page.getByTestId("payment-row").count()) === 1 && /Logged/.test(await page.getByTestId("pay-msg").innerText()), "rent payment logged with on-time result");
+  await page.getByTestId("pay-add").click();
+  check(/already logged/.test(await page.getByTestId("pay-msg").innerText()), "duplicate payment rejected");
+  check((await page.getByTestId("rent-summary").getByText(/1-month on-time streak/i).count()) === 1, "on-time streak shown");
+  check((await page.getByTestId("rent-export").count()) === 1, "payment history can be exported as a spreadsheet");
+  await page.getByTestId("rent-reminders").click();
+  check(/phone app/.test(await page.getByTestId("rent-rem-msg").innerText()), "web explains reminders run on the phone");
+  await page.getByTestId("rent-summary").scrollIntoViewIfNeeded();
+  await shot("45-rent-tracker");
+
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Rent due · \$1,400/).count()) === 1, "My plan shows the next rent due");
+
+  await page.goto(`${base}/move`);
+  await page.getByTestId("movein-address").fill("801 14th St, Oakland");
+  await page.getByTestId("movein-start").click();
+  await page.getByTestId("condition-item").first().getByRole("button", { name: "Damaged" }).click();
+  await page.getByLabel("What's wrong?").fill("Deadbolt sticks");
+  check((await page.getByText(/1 of \d+ items checked/).count()) === 1 && (await page.getByText("1 damaged").count()) === 1, "move-in record tracks items and damage");
+  const moveOut = new Date(Date.now() - 10 * 86_400_000);
+  await page.getByTestId("moveout-date").fill(iso(moveOut));
+  await page.getByTestId("moveout-deposit").fill("1400");
+  await page.getByTestId("moveout-forwarding").fill("2 Elm St, Oakland CA 94612");
+  await page.getByTestId("moveout-start").click();
+  await page.getByTestId("deposit-countdown").waitFor();
+  check(/1[01] days left/.test(await page.getByTestId("deposit-countdown").innerText()), "deposit return counts down 21 days from move-out");
+  await shot("47-move-in-out", true);
+
+  await page.goto(`${base}/waitlists`);
+  await page.getByTestId("wl-name").fill("Oakland Housing Authority — Section 8");
+  await page.getByTestId("wl-checkin").fill(iso(new Date(Date.now() + 3 * 86_400_000)));
+  await page.getByTestId("wl-add").click();
+  await page.getByTestId("waitlist-card").waitFor();
+  check((await page.getByText("Check-in due soon").count()) === 1, "waitlist flags an upcoming check-in");
+  await shot("48-waitlists");
+
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Confirm your spot: Oakland Housing Authority/).count()) === 1 && (await page.getByText("Security deposit due back").count()) === 1, "My plan combines rent, deposit and waitlist dates");
+  await shot("46-plan");
+
+  await page.goto(`${base}/local-help`);
+  await page.getByRole("button", { name: "Oakland", exact: true }).click();
+  check((await page.getByText("Oakland Rent Adjustment Program (RAP)").count()) === 1 && (await page.getByText(/Tenant Protection Act/).count()) === 1, "local help shows the city's official office and the statewide fallback");
+  await shot("49-local-help");
+
+  await page.goto(base);
+  await page.getByTestId("search-input").fill("Oakland");
+  await page.getByTestId("search-input").press("Enter");
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await page.getByTestId("recent-searches").waitFor();
+  check((await page.getByTestId("recent-searches").getByRole("button", { name: "Oakland", exact: true }).count()) === 1, "recent searches are offered as chips");
+
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "Español" }).click();
+  await page.goto(`${base}/plan`);
+  await page.getByText("Mi plan", { exact: true }).waitFor();
+  check((await page.getByText("Herramientas para inquilinos").count()) === 1, "My plan renders in Spanish");
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "English" }).click();
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

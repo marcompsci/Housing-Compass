@@ -11,6 +11,8 @@ import { usePriceHistory } from "../state/priceHistory";
 import { useStore } from "../state/store";
 import { saveAndShare } from "./files";
 import { useSavedCopies } from "../data/savedCopies";
+import { useRenter } from "../state/renter";
+import { cancelAllReminders } from "./reminders";
 
 export async function exportMyData(signedIn: boolean): Promise<string> {
   const s = useStore.getState();
@@ -35,6 +37,7 @@ export async function exportMyData(signedIn: boolean): Promise<string> {
       household: useHousehold.getState().profile,
       notes: s.notes,
       savedAreas: s.savedAreas,
+      renter: (({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches }) => ({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches }))(useRenter.getState()),
     },
     server,
     now(),
@@ -53,4 +56,6 @@ export async function clearThisDevice(): Promise<void> {
   usePriceHistory.getState().clear();
   useHousehold.getState().set(null);
   usePrefs.setState({ checklists: {}, savings: null, onboarded: false });
+  useRenter.getState().clearAll();
+  await cancelAllReminders();
 }

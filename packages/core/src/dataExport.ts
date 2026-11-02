@@ -17,6 +17,8 @@ export interface DeviceData {
   household?: unknown;
   notes?: Record<string, string>;
   savedAreas?: unknown[];
+  /** Rent payments, move-in/out records and waitlists (device-only renter tools). */
+  renter?: unknown;
 }
 
 export function buildDataExport(device: DeviceData, server: unknown | null, now: Date): string {

@@ -67,6 +67,7 @@ export class SupabaseRepository implements ListingRepository {
       p_limit: 500,
       p_region: f.region,
       p_area: f.area && f.area.length >= 3 ? areaToGeoJSON(f.area) : null,
+      p_query: f.query?.trim() ? f.query.trim().slice(0, 80) : null,
     });
     if (error) throw new Error(`search failed: ${error.message}`);
     const { listings, invalid } = parseDocuments((data as unknown[]) ?? []);

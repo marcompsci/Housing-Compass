@@ -13,6 +13,7 @@ import { useSearch } from "../../data/hooks";
 import { useInbox } from "../../alerts/inbox";
 import ListingsMap from "../../map/ListingsMap";
 import { useStore } from "../../state/store";
+import { useRenter } from "../../state/renter";
 import { HIT, color, radius, space, type } from "../../theme";
 
 function activeFilterCount(f: ReturnType<typeof useStore.getState>["filters"]): number {
@@ -47,6 +48,9 @@ export default function Explore() {
     }, 250);
     return () => clearTimeout(id);
   }, [queryText, patchFilters]);
+  const recentSearches = useRenter((s) => s.recentSearches);
+  const rememberSearch = useRenter((s) => s.rememberSearch);
+  const clearRecent = useRenter((s) => s.clearRecentSearches);
   const savedAreas = useStore((s) => s.savedAreas);
   const saveArea = useStore((s) => s.saveArea);
   const deleteArea = useStore((s) => s.deleteArea);
@@ -218,6 +222,10 @@ export default function Explore() {
             accessibilityLabel={t("search.placeholder")}
             returnKeyType="search"
             autoCorrect={false}
+            onBlur={() => {
+              rememberSearch(queryText);
+            }}
+            onSubmitEditing={() => rememberSearch(queryText)}
             testID="search-input"
           />
           {queryText ? (
@@ -226,6 +234,17 @@ export default function Explore() {
             </Pressable>
           ) : null}
         </View>
+        {!queryText && recentSearches.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8, alignItems: "center" }} testID="recent-searches" accessibilityLabel={t("recent.label")}>
+            <Icon name="time-outline" size={16} tint={color.muted} />
+            {recentSearches.map((q) => (
+              <Chip key={q} label={q} onPress={() => setQueryText(q)} accessibilityHint={t("recent.hint")} />
+            ))}
+            <Pressable onPress={clearRecent} accessibilityRole="button" hitSlop={8} style={{ minHeight: HIT, justifyContent: "center" }}>
+              <Text style={[type.tiny, { textDecorationLine: "underline" }]}>{t("recent.clear")}</Text>
+            </Pressable>
+          </ScrollView>
+        ) : null}
         <View style={styles.segment} accessibilityRole="tablist">
           {(["list", "map"] as const).map((v) => (
             <Pressable key={v} onPress={() => setView(v)} accessibilityRole="tab" accessibilityState={{ selected: view === v }} style={[styles.segBtn, view === v && styles.segOn]}>
