@@ -1,0 +1,84 @@
+# Status report — v0.14 (2026-11-02): 20 improvement phases
+
+All 20 phases below are built and tested without credentials. Anything that needs the live backend is wired to real SQL functions (tested on Postgres 16 + PostGIS) and falls back to a clearly labeled demo on the device.
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Held-message review | Reviewers release or keep hidden messages held by the guard. Releasing a payment/SSN request needs a 15+ character reason and a second confirmation. Audited. | `review_held_message`, `held_messages`; Review → Held messages |
+| 2 | Landlord application review | Four authority checks (independent contact, proof of authority, identity, properties), each with a note. Approval is refused by the database until all four pass. Ask-for-info and reject paths. | `record_authority_checks`, `approve_landlord`, `decide_landlord`; Review → Landlords |
+| 3 | Lead expiry countdown | Research leads sorted by days until they auto-hide, with a summary (past due / ≤2 days / this week / later). | `lead_expiry_queue`; Review → Research leads |
+| 4 | Draw-an-area search | Tap 3–20 points on the map. Self-crossing, tiny and county-sized shapes are refused. City/ZIP-centroid pins are never placed inside a drawn area (and the app says how many were left out). | `core/area.ts`, `search_listings(p_area)` |
+| 5 | Travel estimates + directions | Wide, labeled time ranges per mode from straight-line distance; real routes open in Apple/Google Maps with coordinates only. | `core/travel.ts`; listing → Getting around |
+| 6 | Price-change alerts | Saved homes' prices are watched on the device; the server notifies people who saved a home when `price_history` records a change (in-app only). Never compares per-bed with per-room. | `core/priceHistory.ts`, `notify_price_change` trigger |
+| 7 | Price history panel | Only prices actually seen, with dates. Demo listings say they have none. | listing → Price history |
+| 8 | Manager response metrics | Reply rate and median reply time, only after ≥5 conversations in 90 days. | `manager_response_stats`, `core/responseMetrics.ts` |
+| 9 | Calendar export | Confirmed tours export a standards-compliant .ics with a 1-hour reminder and the safety note. | `core/calendar.ts`; conversation → Add to calendar |
+| 10 | Tour-day checklist | Nine checks (address, inside access, identity via official contact, costs in writing, nothing paid yet…). | `core/checklists.ts` |
+| 11 | Application document checklist | Per listing: ID, income, rental history; plus household documents for income-restricted homes and voucher paperwork. Ends with the privacy rule. | Applications → Documents to gather |
+| 12 | Share a listing | Shared text always states the trust status (and DEMO for demo listings); no personal data; `housingcompass://listing/<id>` deep link. | `core/share.ts` |
+| 13 | First-run onboarding | Three skippable screens: trust labels, what you're looking for + budget, where (privacy note). Replayable from Help. | `/welcome` |
+| 14 | Alert preferences | Choose alert kinds, quiet hours and a daily push cap; synced with `set_alert_prefs`, respected by the notifier. | `/alert-settings`, `normalizeAlertPrefs` |
+| 15 | Download / clear my data | JSON export of everything on the device plus `export_my_data()` from the account; clear-this-device. | Account |
+| 16 | Landlord dashboard | Your listings with trust status, conversations awaiting reply, tour counts, renter's-eye preview and change history. | `my_manager_listings`, `listing_audit_trail`; `/landlord-dashboard` |
+| 17 | Photo pipeline (backend) | Private quarantine → malware scan (`photo-scan` function, scanner via env) → dHash re-use check → publish. Rights attestation required by the database. | `listing_photos`, `record_photo_scan`, `publish_listing_photo` |
+| 18 | Programs as data | `programs` table seeded from core; public suggestions go to `program_edits`; a *different* reviewer approves; only whitelisted fields change. | `/programs` → Suggest a correction |
+| 19 | Move-in savings planner | Weeks/months and a date to cover a listing's confirmed move-in total; says plainly when it's over a year away. | `core/savings.ts`; My numbers |
+| 20 | Spanish + Simplified Chinese | Listing details, Help & safety, onboarding and the new screens in Spanish; Simplified Chinese added. Language choice remembered. Pending native-speaker review. | `i18n/strings.ts`, `core/i18n.ts` |
+
+### Tests (all passing)
+- Core: 145 unit tests (31 new)
+- Database: 20 SQL sections (new §20 covers every phase's SQL) + 5 DB↔app contract tests
+- Browser e2e: 57 checks (25 new) + screenshots 28–37
+- Edge functions: Deno typecheck incl. `photo-scan`
+
+### Still needs credentials or people
+- Supabase project + secrets; a malware-scanning service for photos (`PHOTO_SCANNER_URL`)
+- In-app photo picker (needs the scanner first, so nothing unscanned is ever stored)
+- Native-speaker review of Spanish and Chinese
+- Real transit routing (511 / LA Metro) — estimates are labeled until then
+
+---
+
+## Previous: LA expansion + competitor-driven MVP (v0.13, 2026-11-01)
+
+## What was already in the repository
+An Expo (iOS/Android/web) + Supabase/PostGIS monorepo (v0.12): trust engine, Bay Area search/map, accounts, ingestion gates, reviewer queue, alerts, application tracker, affordability checks, Spanish, security hardening, observability. Both new prompts say to keep the existing stack when a repo exists, so it was **extended, not re-scaffolded** (see `ADR.md` #1).
+
+## What this round added
+| Area | Done |
+|---|---|
+| Regions | `bay_area`, `la_city` ⊂ `la_county`; region picker, device-location → region, LA city/neighborhood/ZIP search; region-scoped search in app + SQL |
+| LA research seed | All **48** leads (20 rooms, 20 one-bedrooms, 8 co-living) as `SOURCE_LISTED_UNVERIFIED` + `intake.reviewStatus = pending_review`, observed 2026-11-01. Raw label kept. Exact source pages from §F. **No invented URLs, addresses or ZIPs**. Co-living never classed as an apartment. |
+| Official resources | LAHD property map, LA Affordable & Accessible Housing Registry (AAHR), LA County Housing Resource Center, 211 LA (plus Doorway and 211 Alameda). Programs, waitlists, eligibility and vacancies are separate fields. |
+| Lead moderation | Research-lead queue: "still posted" (refreshes, never verifies) or reject (hidden from the public by RLS). Audited. |
+| Cost transparency | All-in budget cap (rent + mandatory fees when known). Every card shows rent, basis, total monthly, deposit, application fee, move-in estimate, availability timestamp, source, listing type and trust status. Unknown values say "not confirmed". |
+| Exact filters | Unknown is never treated as yes (strict by default; possible matches are opt-in and labeled). New filters: vouchers, utilities, parking, transit ≤10 min. |
+| Unverified tab | Unverified leads sit under their own labeled section, behind a warning gate, never mixed into verified results |
+| Fair Housing | Discriminatory-wording screen (incl. "No Section 8" under CA SB 329) → moderator review. Test proves search has no protected-class filters. No roommate matching by people's characteristics. |
+| New risk signals | Address mismatch in descriptions, external payment links |
+| Messaging | Conversations only on verified listings with a verified manager account. Contacts masked until a tour is confirmed. Payment/SSN requests held from the recipient for review. Rate limits. Tour requests. Inquiry tracker. Response-time metrics (≥5 conversations). |
+| Landlord onboarding | Application → moderator verifies authority via independently found contact → manager membership. Documents are private-bucket paths only and never public. |
+
+## Functional vs mock
+| | Works now (no credentials) | Needs credentials / approvals |
+|---|---|---|
+| Search, filters, map, cards, compare, saved, applications, affordability, message-safety check | ✅ Local mode with bundled leads + **clearly labeled DEMO** fictional listings | Live inventory needs a Supabase project, then verified listings |
+| Accounts, sync, server search, reviewer RPCs, messaging, landlord onboarding | ✅ All SQL tested on real Postgres 16 + PostGIS | A Supabase project (URL + anon key; service-role key as a secret) |
+| Messaging in the app | ✅ Demo threads on fictional listings (no replies; labeled) | Real threads need Supabase + an approved landlord account |
+| Push notifications | Code + queue tested | `eas init` project id, `EXPO_ACCESS_TOKEN` |
+| Official data feeds | Link-outs only | **Written authorization** from BAHFA/MTC (Doorway), LAHD (AAHR) and LACDA (HRC) before any automated import |
+| Aggregators (Zillow, Apartments.com, HotPads, Rent.com, Roomies) | Link-outs only | Licensing/partnerships. No scraping. |
+| Real listing photos | Perceptual hashing implemented | Upload pipeline + malware scanning of uploads (backlog) |
+
+## Tests (all passing)
+- Core: 114 unit tests (incl. 20 LA/competitor + 5 message-guard parity tests)
+- Database: 19 SQL test sections (trust, RLS, accounts, ingestion, review, notifications, rate limits, ops, LA regions + lead moderation, messaging/onboarding) + a 5-test DB↔app contract suite
+- Browser e2e: 32 checks incl. LA region, co-living, programs, lead moderation, masked/held messaging, inquiries
+- Edge functions: Deno typecheck
+
+## Not done (see BACKLOG.md)
+- Polygon (draw-on-map) search
+- Photo upload with scanning
+- Programs as a database table (currently versioned in code with a `checkedOn` date)
+- Translation of the new LA/messaging screens
+- A reviewer UI for held messages and landlord applications (the SQL functions exist)
