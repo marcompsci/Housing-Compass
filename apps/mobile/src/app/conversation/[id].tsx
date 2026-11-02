@@ -1,6 +1,12 @@
-import { messageGuard } from "@housing-compass/core";
-import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { TOUR_DAY_CHECKLIST, buildIcs, checklistProgress, messageGuard, tourEvent } from "@housing-compass/core";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
+import { Checklist } from "../../components/Checklist";
+import { useListing } from "../../data/hooks";
+import { useT } from "../../i18n";
+import { saveAndShare } from "../../lib/files";
+import { addressText } from "../../lib/format";
+import { usePrefs } from "../../state/prefs";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Banner, Button, Chip, Section, Tag } from "../../components/ui";
 import { now } from "../../config";
@@ -15,6 +21,20 @@ export default function ConversationScreen() {
   const thread = useConversations((s) => s.threads.find((t) => t.id === String(id)));
   const send = useConversations((s) => s.send);
   const proposeTour = useConversations((s) => s.proposeTour);
+  const confirmDemoTour = useConversations((s) => s.confirmDemoTour);
+  const refreshTours = useConversations((s) => s.refreshTours);
+  const { listing } = useListing(thread?.listingId ?? null);
+  const checks = usePrefs((s) => s.checklists);
+  const toggleCheck = usePrefs((s) => s.toggleCheck);
+  const [openTour, setOpenTour] = useState<string | null>(null);
+  const [calMsg, setCalMsg] = useState("");
+  const { t } = useT();
+  useFocusEffect(
+    useCallback(() => {
+      if (thread && !thread.demo) void refreshTours(thread.id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [thread?.id]),
+  );
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"in_person" | "live_video">("in_person");
@@ -72,11 +92,44 @@ export default function ConversationScreen() {
             }),
           )}
         </View>
-        {thread.tours.map((t) => (
-          <Text key={t.id} style={type.small}>
-            {t.mode === "in_person" ? "In-person" : "Video"} tour · {shortDate(t.startsAt)} {new Date(t.startsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · {t.status}
-          </Text>
-        ))}
+        {thread.tours.map((tour) => {
+          const key = `tour:${tour.id}`;
+          const prog = checklistProgress(TOUR_DAY_CHECKLIST, checks[key] ?? []);
+          return (
+            <View key={tour.id} style={styles.tour} testID="tour">
+              <Text style={type.small}>
+                {tour.mode === "in_person" ? "In-person" : "Video"} tour · {shortDate(tour.startsAt)} {new Date(tour.startsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · {tour.status}
+              </Text>
+              {thread.demo && tour.status === "proposed" ? (
+                <Chip icon="flask-outline" label={t("tour.simulateConfirm")} onPress={() => confirmDemoTour(thread.id, tour.id)} accessibilityHint="Demo only: pretends the fictional manager confirmed" />
+              ) : null}
+              {tour.status === "confirmed" ? (
+                <View style={{ gap: 8 }}>
+                  <View style={styles.row}>
+                    <Button
+                      kind="secondary"
+                      icon="calendar-outline"
+                      label={t("tour.addToCalendar")}
+                      testID="add-to-calendar"
+                      onPress={async () => {
+                        try {
+                          const ics = buildIcs([tourEvent(tour, { title: thread.title, addressText: listing ? addressText(listing) : null })], now());
+                          const r = await saveAndShare(`tour-${tour.startsAt.slice(0, 10)}.ics`, ics, "text/calendar", "com.apple.ical.ics");
+                          setCalMsg(r === "downloaded" ? t("tour.calDownloaded") : "");
+                        } catch {
+                          setCalMsg(t("tour.calFailed"));
+                        }
+                      }}
+                    />
+                    <Button kind="ghost" icon="checkbox-outline" label={`${t("tour.checklist")} (${prog.done}/${prog.total})`} onPress={() => setOpenTour(openTour === tour.id ? null : tour.id)} />
+                  </View>
+                  {openTour === tour.id ? <Checklist items={TOUR_DAY_CHECKLIST} done={checks[key] ?? []} onToggle={(id) => toggleCheck(key, id)} /> : null}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+        {calMsg ? <Text style={type.tiny}>{calMsg}</Text> : null}
       </Section>
     </ScrollView>
   );
@@ -88,5 +141,6 @@ const styles = StyleSheet.create({
   mine: { alignSelf: "flex-end", backgroundColor: color.brandSoft },
   theirs: { alignSelf: "flex-start", backgroundColor: color.surface, borderWidth: 1, borderColor: color.line },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tour: { gap: 8, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.line },
   input: { minHeight: HIT * 2, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, padding: 12, fontSize: 15, color: color.ink, backgroundColor: color.surface, textAlignVertical: "top" },
 });

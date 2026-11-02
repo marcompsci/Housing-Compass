@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATEGORIES, DOMAIN_TEXT, PRICE_BASES, VERIFICATION_LEVELS, contrastRatio, pickLocale } from "../src/index";
+import { CATEGORIES, DOMAIN_TEXT, LOCALES, PRICE_BASES, VERIFICATION_LEVELS, contrastRatio, pickLocale } from "../src/index";
 import { color, levelTone } from "../../../apps/mobile/src/theme";
 import { STRINGS } from "../../../apps/mobile/src/i18n/strings";
 
@@ -23,15 +23,17 @@ describe("color contrast (WCAG AA 4.5:1 for text)", () => {
 });
 
 describe("translations are complete", () => {
-  it("UI strings: every English key exists in Spanish with the same placeholders", () => {
-    for (const [k, v] of Object.entries(STRINGS.en)) {
-      const es = (STRINGS.es as Record<string, string>)[k];
-      expect(es, k).toBeTruthy();
-      expect([...es!.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), k).toEqual([...v.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort());
+  it("UI strings: every English key exists in every locale with the same placeholders", () => {
+    for (const loc of LOCALES) {
+      for (const [k, v] of Object.entries(STRINGS.en)) {
+        const tr = (STRINGS[loc] as Record<string, string>)[k];
+        expect(tr, `${loc}:${k}`).toBeTruthy();
+        expect([...tr!.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), `${loc}:${k}`).toEqual([...v.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort());
+      }
     }
   });
   it("domain text covers every category, level and basis", () => {
-    for (const loc of ["en", "es"] as const) {
+    for (const loc of LOCALES) {
       for (const c of CATEGORIES) expect(DOMAIN_TEXT[loc].category[c]).toBeTruthy();
       for (const l of VERIFICATION_LEVELS) expect(DOMAIN_TEXT[loc].levelExplainer[l]).toBeTruthy();
       for (const b of PRICE_BASES) expect(DOMAIN_TEXT[loc].basisSuffix[b]).toBeTruthy();

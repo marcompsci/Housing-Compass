@@ -266,6 +266,17 @@ do $$ begin
   exception when insufficient_privilege then null; end;
 end $$;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+do $$ begin
+  begin
+    perform approve_landlord((select id from landlord_applications where company_name = 'Template Lane Rentals'), null, 'Checked LLC filing and official site');
+    raise exception 'TEST FAILED: approved without authority checks';
+  exception when check_violation then null; end;
+  perform record_authority_checks((select id from landlord_applications where company_name = 'Template Lane Rentals'), jsonb_build_object(
+    'contact_found_independently', jsonb_build_object('passed', true, 'note', 'Office number on templatelane.example'),
+    'authority_document', jsonb_build_object('passed', true, 'note', 'Management agreement, stored privately'),
+    'identity_matches', jsonb_build_object('passed', true, 'note', 'Same LLC name'),
+    'properties_match', jsonb_build_object('passed', true, 'note', '800 Template Ln listed')));
+end $$;
 do $$ declare mid uuid; begin
   mid := approve_landlord((select id from landlord_applications where company_name = 'Template Lane Rentals'), null, 'Checked LLC filing and official site; called the office number on the site');
   perform set_config('test.mid', mid::text, false);
@@ -318,3 +329,227 @@ do $$ begin
   assert exists (select 1 from messages where body = 'Great, my number is 510-555-0199' and not masked), 'contacts allowed after confirmed tour';
 end $$;
 select 'MESSAGING TESTS PASSED' as result;
+
+-- 20. v0.14: held-message review, landlord decisions, lead expiry, area search, price alerts,
+--     landlord dashboard, photo pipeline, programs + reviewed edits, data export.
+insert into auth.users(id, email) values ('00000000-0000-0000-0000-0000000000f6', 'reviewer2@test.local');
+update user_profiles set role = 'reviewer' where id = '00000000-0000-0000-0000-0000000000f6';
+
+-- 20a. Held messages
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';  -- manager asks for an SSN (held)
+insert into messages(conversation_id, sender_id, body) select id, '00000000-0000-0000-0000-0000000000e5', 'Before we confirm, please send your SSN' from conversations where listing_id = 'lead-oakland-801-14th-st';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+do $$ begin
+  begin
+    perform review_held_message((select id from messages where held limit 1), 'release', 'renter says it is fine to release');
+    raise exception 'TEST FAILED: non-reviewer reviewed a held message';
+  exception when insufficient_privilege then null; end;
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+do $$ declare gift uuid; ssn uuid; begin
+  select id into gift from messages where body ilike '%gift card%';
+  select id into ssn from messages where body ilike '%SSN%';
+  assert (select count(*) from held_messages) = 2, format('two held messages queued, saw %s', (select count(*) from held_messages));
+  begin perform review_held_message(gift, 'release', 'ok'); raise exception 'TEST FAILED: short release reason';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin perform review_held_message(gift, 'reject', 'obvious scam'); raise exception 'TEST FAILED: verdict language';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  assert review_held_message(gift, 'reject', 'Asked for a gift-card deposit before any tour') = 'reject';
+  assert review_held_message(ssn, 'release', 'Called manager: they meant the screening form on their official portal') = 'release';
+  assert (select count(*) from held_messages) = 0, 'queue empty after review';
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+do $$ begin
+  assert exists (select 1 from messages where body ilike '%SSN%'), 'released message visible to renter';
+  assert not exists (select 1 from messages where body ilike '%gift card%'), 'rejected message stays hidden';
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+do $$ begin
+  assert (select count(*) from audit_events where entity = 'message' and action in ('held_reject','held_release')) = 2, 'held decisions audited';
+end $$;
+
+-- 20b. Landlord: needs-info and rejection; unknown checks refused
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000d4';
+insert into landlord_applications(user_id, company_name, property_addresses) values ('00000000-0000-0000-0000-0000000000d4', 'Second Street Homes', array['12 Second St']);
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+do $$ declare app uuid := (select id from landlord_applications where company_name = 'Second Street Homes'); begin
+  begin perform record_authority_checks(app, '{"looks_legit": {"passed": true, "note": "x"}}'); raise exception 'TEST FAILED: unknown check accepted';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  assert decide_landlord(app, 'needs_info', 'Please send the management agreement for 12 Second St') = 'needs_info';
+  assert (select status from landlord_applications where id = app) = 'needs_info';
+  assert decide_landlord(app, 'rejected', 'No proof of authority after 30 days') = 'rejected';
+  begin perform decide_landlord(app, 'needs_info', 'again please'); raise exception 'TEST FAILED: decided twice';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+end $$;
+
+-- 20c. Lead expiry queue (reviewers only), most urgent first
+do $$ declare prev int := -1000; r record; n int := 0; begin
+  for r in select * from lead_expiry_queue() loop
+    assert r.days_left >= prev, 'sorted by days left';
+    prev := r.days_left; n := n + 1;
+  end loop;
+  assert n > 0, 'leads in the expiry queue';
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+do $$ begin
+  begin perform * from lead_expiry_queue(); raise exception 'TEST FAILED: non-reviewer saw expiry queue';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+
+-- 20d. Draw-an-area search: approximate pins never match; bad shapes refused
+do $$ declare area jsonb := '{"type":"Polygon","coordinates":[[[-122.35,37.70],[-122.10,37.70],[-122.10,37.90],[-122.35,37.90],[-122.35,37.70]]]}';
+               n_all int; n_area int; begin
+  select count(*) into n_all from search_listings('PRIVATE_ROOM', true, null, null, null, 200000, 500, 'bay_area', null);
+  select count(*) into n_area from search_listings('PRIVATE_ROOM', true, null, null, null, 200000, 500, 'bay_area', area);
+  assert n_area <= n_all, 'area narrows results';
+  assert not exists (select 1 from search_listings('PRIVATE_ROOM', true, null, null, null, 200000, 500, 'bay_area', area) d
+                      where d->'location'->>'precision' not in ('rooftop','street')), 'no approximate pins inside a drawn area';
+  begin
+    perform search_listings('PRIVATE_ROOM', true, null, null, null, 200000, 500, null, '{"type":"Polygon","coordinates":[[[-122.3,37.7],[-122.1,37.9],[-122.1,37.7],[-122.3,37.9],[-122.3,37.7]]]}');
+    raise exception 'TEST FAILED: self-intersecting area accepted';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin
+    perform search_listings('PRIVATE_ROOM', true, null, null, null, 200000, 500, null, '{"type":"Polygon","coordinates":[[[-123,36],[-120,36],[-120,39],[-123,39],[-123,36]]]}');
+    raise exception 'TEST FAILED: huge area accepted';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+end $$;
+
+-- 20e. Price-change alerts for people who saved the home; respects alert preferences
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+insert into favorites(user_id, listing_id) values ('00000000-0000-0000-0000-0000000000c3', 'lead-san-jose-3641-kilo-ave-3');
+reset request.jwt.claim.sub;
+reset role;
+update units set base_rent_cents = 85000 where listing_id = 'lead-san-jose-3641-kilo-ave-3';
+do $$ begin
+  assert exists (select 1 from notifications where user_id = '00000000-0000-0000-0000-0000000000c3' and kind = 'listing_changed'
+                 and title = 'Price dropped on a saved home' and channel = 'in_app' and body like '%$850'), 'price drop notified in-app';
+end $$;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+select set_alert_prefs(22, 7, -480, 3, array['deadline_reminder']);
+do $$ begin
+  begin perform set_alert_prefs(22, null, -480, 3, null); raise exception 'TEST FAILED: half quiet hours';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin perform set_alert_prefs(null, null, 0, 3, array['bogus']); raise exception 'TEST FAILED: unknown alert kind';
+  exception when check_violation then null; end;
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+update units set base_rent_cents = 80000 where listing_id = 'lead-san-jose-3641-kilo-ave-3';
+do $$ begin
+  assert not exists (select 1 from notifications where user_id = '00000000-0000-0000-0000-0000000000c3' and dedupe_key = 'pc:lead-san-jose-3641-kilo-ave-3:80000'), 'turned-off kind not sent';
+  assert (select quiet_start from user_profiles where id = '00000000-0000-0000-0000-0000000000c3') = 22;
+end $$;
+
+-- 20f. Landlord dashboard + audit trail
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';
+do $$ declare r record; begin
+  select * into r from my_manager_listings() where id = 'lead-oakland-801-14th-st';
+  assert r.conversations = 1 and r.tours_confirmed = 1, format('dashboard counts %s/%s', r.conversations, r.tours_confirmed);
+  assert (select count(*) from listing_audit_trail('lead-oakland-801-14th-st')) >= 1, 'manager sees audit trail';
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+do $$ begin
+  assert (select count(*) from my_manager_listings()) = 0, 'renters manage nothing';
+  begin perform * from listing_audit_trail('lead-oakland-801-14th-st'); raise exception 'TEST FAILED: renter read audit trail';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+
+-- 20g. Photo pipeline: quarantined → scanned → published; reused photos rejected
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';
+insert into listing_photos(listing_id, manager_id, storage_path, mime, bytes, width, height, rights_attested, uploaded_by)
+values ('lead-oakland-801-14th-st', current_setting('test.mid')::uuid, 'm/lead-oakland-801-14th-st/p1.jpg', 'image/jpeg', 2000000, 1600, 1200, true, '00000000-0000-0000-0000-0000000000e5');
+do $$ begin
+  begin
+    insert into listing_photos(listing_id, manager_id, storage_path, mime, bytes, width, height, rights_attested, uploaded_by, status)
+    values ('lead-oakland-801-14th-st', current_setting('test.mid')::uuid, 'm/x/p2.jpg', 'image/jpeg', 2000000, 1600, 1200, true, '00000000-0000-0000-0000-0000000000e5', 'published');
+    raise exception 'TEST FAILED: uploaded straight to published';
+  exception when insufficient_privilege then null; end;
+  begin
+    insert into listing_photos(listing_id, manager_id, storage_path, mime, bytes, width, height, rights_attested, uploaded_by)
+    values ('lead-oakland-801-14th-st', current_setting('test.mid')::uuid, 'm/x/p3.jpg', 'image/jpeg', 2000000, 1600, 1200, false, '00000000-0000-0000-0000-0000000000e5');
+    raise exception 'TEST FAILED: no rights attestation';
+  exception when check_violation then null; end;
+  begin perform publish_listing_photo((select id from listing_photos where storage_path like '%p1.jpg')); raise exception 'TEST FAILED: published before scan';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin perform record_photo_scan((select id from listing_photos where storage_path like '%p1.jpg'), true, 'ffffffff00000000', 'ok'); raise exception 'TEST FAILED: manager recorded own scan';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset request.jwt.claim.sub;
+set role anon;
+do $$ begin assert (select count(*) from listing_photos) = 0, 'anon cannot see quarantined photos'; end $$;
+reset role;
+set role service_role;
+select record_photo_scan((select id from listing_photos where storage_path like '%p1.jpg'), true, 'ffffffff00000000', 'no threats found');
+reset role;
+-- the same image already published on a different listing
+insert into listing_photos(listing_id, manager_id, storage_path, mime, bytes, width, height, rights_attested, uploaded_by, status, dhash)
+values ('lead-oakland-44th-st', current_setting('test.mid')::uuid, 'm/other/p9.jpg', 'image/jpeg', 2000000, 1600, 1200, true, '00000000-0000-0000-0000-0000000000e5', 'published', 'ffffffff00000001');
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';
+do $$ begin
+  assert publish_listing_photo((select id from listing_photos where storage_path like '%p1.jpg')) = 'rejected', 'reused photo rejected';
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+delete from listing_photos where storage_path = 'm/other/p9.jpg';
+update listing_photos set status = 'quarantined', dhash = null where storage_path like '%p1.jpg';
+set role service_role;
+select record_photo_scan((select id from listing_photos where storage_path like '%p1.jpg'), true, '0123456789abcdef', 'no threats found');
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000e5';
+do $$ begin
+  assert publish_listing_photo((select id from listing_photos where storage_path like '%p1.jpg')) = 'published', 'clean original photo published';
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+set role anon;
+do $$ begin assert (select count(*) from listing_photos where status = 'published') = 1, 'anon sees published photo'; end $$;
+reset role;
+
+-- 20h. Programs: public read; edits need a different reviewer; only whitelisted fields
+set role anon;
+do $$ begin assert (select count(*) from programs) >= 6, 'programs seeded and public'; end $$;
+reset role;
+set role authenticated;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+insert into program_edits(program_id, proposed_by, changes, evidence_url) values ('doorway', '00000000-0000-0000-0000-0000000000c3', '{"hours":"Online 24/7"}', 'https://housingbayarea.mtc.ca.gov/');
+insert into program_edits(program_id, proposed_by, changes) values ('doorway', '00000000-0000-0000-0000-0000000000c3', '{"name":"Something else"}');
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
+insert into program_edits(program_id, proposed_by, changes) values ('doorway', '00000000-0000-0000-0000-0000000000a1', '{"hours":"self edit"}');
+do $$ begin
+  assert decide_program_edit((select id from program_edits where changes->>'hours' = 'Online 24/7'), true, 'Checked the portal home page today') = 'approved';
+  assert (select hours from programs where id = 'doorway') = 'Online 24/7', 'edit applied';
+  assert (select checked_on from programs where id = 'doorway') = current_date, 'checked date refreshed';
+  begin perform decide_program_edit((select id from program_edits where changes ? 'name'), true, 'renaming it'); raise exception 'TEST FAILED: name edited';
+  exception when raise_exception then if sqlerrm like 'TEST FAILED%' then raise; end if; end;
+  begin perform decide_program_edit((select id from program_edits where changes->>'hours' = 'self edit'), true, 'approving myself'); raise exception 'TEST FAILED: self-approved';
+  exception when insufficient_privilege then null; end;
+end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000f6';
+do $$ begin
+  assert decide_program_edit((select id from program_edits where changes->>'hours' = 'self edit'), false, 'Hours not stated on the source') = 'rejected';
+end $$;
+
+-- 20i. Download my data
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c3';
+do $$ declare d jsonb := export_my_data(); begin
+  assert d->'favorites' ? 'lead-san-jose-3641-kilo-ave-3', 'favorites exported';
+  assert jsonb_array_length(d->'conversations') = 1, 'conversation exported';
+  assert not (d::text ilike '%gift card%'), 'rejected held message from the manager is not exported';
+  assert not (d->'profile' ? 'role'), 'role not exported';
+end $$;
+reset request.jwt.claim.sub;
+reset role;
+select 'V0.14 TESTS PASSED' as result;

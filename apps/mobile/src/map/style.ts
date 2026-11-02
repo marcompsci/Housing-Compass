@@ -1,4 +1,4 @@
-import { formatUsd, type SearchHit } from "@housing-compass/core";
+import { formatUsd, type LatLng, type SearchHit } from "@housing-compass/core";
 import { useEffect, useState } from "react";
 import { config } from "../config";
 import counties from "./bayAreaCounties.json";
@@ -107,4 +107,25 @@ export interface ListingsMapProps {
   selectedId: string | null;
   onSelectListing(id: string): void;
   onSelectArea(city: string): void;
+  /** Draw-an-area mode: map taps add vertices instead of selecting. */
+  drawing?: boolean;
+  /** The outline being drawn, or the applied search area. */
+  areaPoints?: LatLng[];
+  onMapPress?(p: LatLng): void;
 }
+
+/** GeoJSON for the drawn outline: a polygon once it has 3+ points, a line before that, plus vertex dots. */
+export function areaShape(points: LatLng[]): GeoJSON.FeatureCollection | null {
+  if (!points.length) return null;
+  const coords = points.map((p) => [p.lng, p.lat]);
+  const features: GeoJSON.Feature[] = points.map((p, i) => ({ type: "Feature", properties: { kind: "vertex", i }, geometry: { type: "Point", coordinates: [p.lng, p.lat] } }));
+  if (points.length >= 3) features.unshift({ type: "Feature", properties: { kind: "area" }, geometry: { type: "Polygon", coordinates: [[...coords, coords[0]!]] } });
+  else if (points.length === 2) features.unshift({ type: "Feature", properties: { kind: "edge" }, geometry: { type: "LineString", coordinates: coords } });
+  return { type: "FeatureCollection", features };
+}
+
+export const AREA_PAINT = {
+  fill: { "fill-color": "#0B6E5F", "fill-opacity": 0.14 },
+  line: { "line-color": "#0B6E5F", "line-width": 2.5, "line-dasharray": [2, 1] },
+  vertex: { "circle-radius": 6, "circle-color": "#FFFFFF", "circle-stroke-color": "#0B6E5F", "circle-stroke-width": 2.5 },
+} as const;

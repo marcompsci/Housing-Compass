@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { DemoTag, TrustBadge } from "../../components/TrustBadge";
 import { Banner, Tag } from "../../components/ui";
-import { decideLead, loadLeadQueue, loadQueue, reviewMode, type ReviewMode } from "../../review/service";
+import { loadHeld, loadLandlordApps, loadLeadQueue, loadQueue, reviewMode, type HeldItem, type LandlordApp, type ReviewMode } from "../../review/service";
+import { HeldTab, LandlordTab, LeadExpiryTab } from "../../components/ReviewTabs";
 import { Button, Chip } from "../../components/ui";
 import { formatRent, neutralLanguageIssue, type Listing } from "@housing-compass/core";
 import { TextInput } from "react-native";
@@ -14,9 +15,10 @@ import { openExternal } from "../../lib/links";
 export default function ReviewQueue() {
   const [mode, setMode] = useState<ReviewMode | null>(null);
   const [items, setItems] = useState<ReviewQueueItem[]>([]);
-  const [tab, setTab] = useState<"risk" | "leads">("risk");
+  const [tab, setTab] = useState<"risk" | "leads" | "held" | "landlords">("risk");
   const [leads, setLeads] = useState<Listing[]>([]);
-  const [reason, setReason] = useState("");
+  const [held, setHeld] = useState<HeldItem[]>([]);
+  const [apps, setApps] = useState<LandlordApp[]>([]);
   const [error, setError] = useState("");
 
   useFocusEffect(
@@ -28,6 +30,8 @@ export default function ReviewQueue() {
           setMode(m);
           setItems(await loadQueue(m));
           setLeads(await loadLeadQueue(m));
+          setHeld(await loadHeld(m));
+          setApps(await loadLandlordApps(m));
         })
         .catch((e: Error) => setError(e.message));
       return () => {
@@ -54,30 +58,15 @@ export default function ReviewQueue() {
         </Banner>
       ) : null}
       {error ? <Banner tone="danger" icon="alert-circle-outline" title={error} /> : null}
-      <View style={{ flexDirection: "row", gap: 8 }} accessibilityRole="tablist">
+      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }} accessibilityRole="tablist">
         <Chip label={`Risk & reports (${items.length})`} selected={tab === "risk"} onPress={() => setTab("risk")} />
         <Chip label={`Research leads (${leads.length})`} selected={tab === "leads"} onPress={() => setTab("leads")} />
+        <Chip label={`Held messages (${held.length})`} selected={tab === "held"} onPress={() => setTab("held")} />
+        <Chip label={`Landlords (${apps.length})`} selected={tab === "landlords"} onPress={() => setTab("landlords")} />
       </View>
-      {tab === "leads" ? (
-        <View style={{ gap: space.md }}>
-          <Text style={type.small}>Open the source page. If the ad is still posted at this price, mark “Still posted” (keeps it from expiring as an unverified lead). If it's gone or wrong, reject it. Neither step verifies the listing — use the six-check form for that.</Text>
-          <TextInput value={reason} onChangeText={setReason} placeholder="What you saw (e.g. 'Ad still up at $815 on Nov 2')" style={styles.input} accessibilityLabel="Lead decision reason" />
-          {leads.slice(0, 50).map((l) => (
-            <View key={l.id} style={styles.item} testID="lead-item">
-              <Text style={type.h3}>{l.title}</Text>
-              <Text style={type.tiny}>
-                {l.address.city} · {formatRent(l)} · {l.intake?.rawLabel}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                {l.source.searchPageUrls[0] ? <Button kind="ghost" label="Open source ↗" onPress={() => openExternal(l.source.searchPageUrls[0]!)} /> : <Text style={type.tiny}>No source recorded — reject unless you can find it.</Text>}
-                <Button kind="secondary" label="Still posted" disabled={!!neutralLanguageIssue(reason) || !l.source.searchPageUrls.length} onPress={async () => { await decideLead(mode!, l, "source_found", reason); setLeads((x) => x.filter((y) => y.id !== l.id)); }} />
-                <Button kind="danger" label="Reject" disabled={!!neutralLanguageIssue(reason)} onPress={async () => { await decideLead(mode!, l, "reject", reason); setLeads((x) => x.filter((y) => y.id !== l.id)); }} />
-              </View>
-            </View>
-          ))}
-          {leads.length > 50 ? <Text style={type.tiny}>Showing 50 of {leads.length}.</Text> : null}
-        </View>
-      ) : null}
+      {tab === "held" && mode ? <HeldTab mode={mode} items={held} onDone={(id) => setHeld((x) => x.filter((y) => y.id !== id))} /> : null}
+      {tab === "landlords" && mode ? <LandlordTab mode={mode} apps={apps} onDone={(id) => setApps((x) => x.filter((y) => y.id !== id))} /> : null}
+      {tab === "leads" && mode ? <LeadExpiryTab mode={mode} leads={leads} onDone={(id) => setLeads((x) => x.filter((y) => y.id !== id))} /> : null}
       {tab === "risk" ? <Text style={type.small}>{items.length} item(s) waiting. Highest risk first.</Text> : null}
       {(tab === "risk" ? items : []).map((it) => (
         <Pressable

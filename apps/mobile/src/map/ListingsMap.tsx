@@ -2,20 +2,39 @@
  * Native map (iOS/Android) using MapLibre Native. Requires a development build
  * (`npx expo run:ios|android` or EAS) — MapLibre is not included in Expo Go.
  */
-import { Camera, Map, Marker, type StyleSpecification } from "@maplibre/maplibre-react-native";
+import { Camera, GeoJSONSource, Layer, Map, Marker, type StyleSpecification } from "@maplibre/maplibre-react-native";
 import { formatUsd } from "@housing-compass/core";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { color, type } from "../theme";
-import { PIN_COLORS, toMapModels, useMapStyle, type ListingsMapProps } from "./style";
+import { AREA_PAINT, PIN_COLORS, areaShape, toMapModels, useMapStyle, type ListingsMapProps } from "./style";
 
-export default function ListingsMap({ hits, center, selectedId, onSelectListing, onSelectArea }: ListingsMapProps) {
+export default function ListingsMap({ hits, center, selectedId, onSelectListing, onSelectArea, drawing, areaPoints = [], onMapPress }: ListingsMapProps) {
   const { style, offline, attribution } = useMapStyle();
   const { pins, areas } = toMapModels(hits);
+  const shape = areaShape(areaPoints);
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Map style={StyleSheet.absoluteFill} mapStyle={style as string | StyleSpecification} attribution={false} logo={false} compass={false}>
+      <Map
+        style={StyleSheet.absoluteFill}
+        mapStyle={style as string | StyleSpecification}
+        attribution={false}
+        logo={false}
+        compass={false}
+        onPress={(e) => {
+          if (!drawing || !onMapPress) return;
+          const [lng, lat] = e.nativeEvent.lngLat;
+          onMapPress({ lat, lng });
+        }}
+      >
         <Camera initialViewState={{ center: [center.lng, center.lat], zoom: 8.6 }} center={[center.lng, center.lat]} />
-        {areas.map((a) => (
+        {shape ? (
+          <GeoJSONSource id="search-area" data={shape}>
+            <Layer id="search-area-fill" type="fill" filter={["==", ["get", "kind"], "area"]} paint={AREA_PAINT.fill} />
+            <Layer id="search-area-line" type="line" filter={["!=", ["get", "kind"], "vertex"]} paint={AREA_PAINT.line as never} />
+            {drawing ? <Layer id="search-area-vertex" type="circle" filter={["==", ["get", "kind"], "vertex"]} paint={AREA_PAINT.vertex} /> : null}
+          </GeoJSONSource>
+        ) : null}
+        {(drawing ? [] : areas).map((a) => (
           <Marker key={`area-${a.key}`} id={`area-${a.key}`} lngLat={[a.lng, a.lat]}>
             <Pressable
               onPress={() => onSelectArea(a.city)}
@@ -30,7 +49,7 @@ export default function ListingsMap({ hits, center, selectedId, onSelectListing,
             </Pressable>
           </Marker>
         ))}
-        {pins.map((p) => {
+        {(drawing ? [] : pins).map((p) => {
           const c = PIN_COLORS[p.tone];
           return (
             <Marker key={p.id} id={p.id} lngLat={[p.lng, p.lat]} anchor="bottom">

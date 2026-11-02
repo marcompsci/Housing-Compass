@@ -137,3 +137,32 @@ export function programsFor(region: RegionId): HousingProgram[] {
 /** Plain-language voucher rights note (California). Reviewed by counsel before launch — see docs. */
 export const VOUCHER_NOTE_CA =
   "In California, it is generally unlawful for a landlord to refuse a tenant only because they use a housing voucher such as Section 8, or to advertise “No Section 8” (SB 329, in effect since 2020). Landlords may still apply their other usual screening criteria.";
+
+/** A row of the `programs` table (reviewed edits) → the app's HousingProgram shape. */
+export function programFromRow(r: Record<string, unknown>): HousingProgram | null {
+  const str = (k: string) => (typeof r[k] === "string" ? (r[k] as string) : null);
+  const arr = (k: string) => (Array.isArray(r[k]) ? (r[k] as string[]) : []);
+  const id = str("id");
+  const url = str("url");
+  if (!id || !url || !/^https:\/\//.test(url)) return null;
+  const regions = arr("regions").filter((x): x is RegionId => x === "bay_area" || x === "la_city" || x === "la_county");
+  if (!regions.length) return null;
+  const kind = str("kind") as HousingProgram["kind"] | null;
+  if (!kind) return null;
+  return {
+    id, regions, kind, url,
+    name: str("name") ?? id,
+    operator: str("operator") ?? "",
+    phone: str("phone"), tty: str("tty"), hours: str("hours"),
+    whatItIs: str("what_it_is") ?? "",
+    waitlistInfo: str("waitlist_info") ?? "",
+    eligibilityInfo: str("eligibility_info") ?? "",
+    vacancyInfo: str("vacancy_info") ?? "",
+    checkedOn: (str("checked_on") ?? "").slice(0, 10),
+    sources: arr("sources"),
+  };
+}
+
+/** Fields the public may suggest corrections for (mirrors decide_program_edit's whitelist). */
+export const PROGRAM_EDITABLE_FIELDS = ["url", "phone", "tty", "hours", "what_it_is", "waitlist_info", "eligibility_info", "vacancy_info"] as const;
+export type ProgramEditableField = (typeof PROGRAM_EDITABLE_FIELDS)[number];

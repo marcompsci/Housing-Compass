@@ -1,4 +1,8 @@
-import { NEXT_STEP, STATUS_LABEL, attention, nextMoves, sortApplications, type TrackedApplication } from "@housing-compass/core";
+import { NEXT_STEP, STATUS_LABEL, applicationDocuments, attention, checklistProgress, nextMoves, sortApplications, type TrackedApplication } from "@housing-compass/core";
+import { Checklist } from "../../components/Checklist";
+import { useListing } from "../../data/hooks";
+import { useT } from "../../i18n";
+import { usePrefs } from "../../state/prefs";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -8,6 +12,8 @@ import { now } from "../../config";
 import { daysUntil, shortDate } from "../../lib/format";
 import { useApplications } from "../../state/applications";
 import { HIT, color, radius, space, type } from "../../theme";
+
+const NO_TICKS: string[] = [];
 
 const ATTENTION_TEXT = {
   deadline_soon: "Deadline soon",
@@ -21,6 +27,14 @@ function AppCard({ a }: { a: TrackedApplication }) {
   const update = useApplications((s) => s.update);
   const remove = useApplications((s) => s.remove);
   const [open, setOpen] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
+  const { t } = useT();
+  const { listing } = useListing(a.listingId);
+  const docs = listing ? applicationDocuments(listing) : [];
+  const key = `docs:${a.id}`;
+  const ticked = usePrefs((s) => s.checklists[key]) ?? NO_TICKS;
+  const toggleCheck = usePrefs((s) => s.toggleCheck);
+  const prog = checklistProgress(docs, ticked);
   const att = attention(a, now());
   const plusDays = (d: number) => new Date(now().getTime() + d * 86_400_000).toISOString();
 
@@ -47,6 +61,15 @@ function AppCard({ a }: { a: TrackedApplication }) {
           <Chip key={s} label={`→ ${STATUS_LABEL[s]}`} onPress={() => move(a.id, s)} accessibilityHint={`Mark as ${STATUS_LABEL[s]}`} />
         ))}
       </View>
+      {docs.length ? (
+        <Button kind="ghost" icon="folder-open-outline" label={`${t("docs.title")} (${prog.done}/${prog.total})`} onPress={() => setDocsOpen(!docsOpen)} testID="docs-toggle" />
+      ) : null}
+      {docsOpen ? (
+        <View style={{ gap: 6 }}>
+          <Text style={type.tiny}>{t("docs.note")}</Text>
+          <Checklist items={docs} done={ticked} onToggle={(id) => toggleCheck(key, id)} />
+        </View>
+      ) : null}
       <Button kind="ghost" label={open ? "Hide details" : "Notes & follow-up"} onPress={() => setOpen(!open)} />
       {open ? (
         <View style={{ gap: 8 }}>

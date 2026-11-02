@@ -1,7 +1,8 @@
-import { CATEGORIES, type SearchHit } from "@housing-compass/core";
+import { AREA_PROBLEM_TEXT, CATEGORIES, validateArea, type LatLng, type SearchHit } from "@housing-compass/core";
 import { useT } from "../../i18n";
 import { router } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePrefs } from "../../state/prefs";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinkOutPanel } from "../../components/LinkOutPanel";
@@ -15,7 +16,7 @@ import { useStore } from "../../state/store";
 import { HIT, color, radius, space, type } from "../../theme";
 
 function activeFilterCount(f: ReturnType<typeof useStore.getState>["filters"]): number {
-  return [f.petsRequired, f.furnished !== "any", f.accessibilityRequired, f.utilitiesIncludedRequired, f.parkingRequired, f.vouchersRequired, f.maxTransitWalkMinutes !== null, f.maxMinLeaseMonths !== null, f.moveInBy !== null, f.radiusKm !== null, f.commuteTo !== null].filter(Boolean).length;
+  return [f.petsRequired, f.furnished !== "any", f.accessibilityRequired, f.utilitiesIncludedRequired, f.parkingRequired, f.vouchersRequired, f.maxTransitWalkMinutes !== null, f.maxMinLeaseMonths !== null, f.moveInBy !== null, f.radiusKm !== null, f.commuteTo !== null, !!f.area].filter(Boolean).length;
 }
 
 export default function Explore() {
@@ -28,7 +29,29 @@ export default function Explore() {
   const patchFilters = useStore((s) => s.patchFilters);
   const acknowledged = useStore((s) => s.unverifiedWarningAcknowledged);
   const [cityFocus, setCityFocus] = useState<string | null>(null);
+  const onboarded = usePrefs((s) => s.onboarded);
+  const [prefsReady, setPrefsReady] = useState(usePrefs.persist.hasHydrated());
+  useEffect(() => usePrefs.persist.onFinishHydration(() => setPrefsReady(true)), []);
+  useEffect(() => {
+    if (!prefsReady || onboarded) return;
+    const id = setTimeout(() => router.push("/welcome"), 0);
+    return () => clearTimeout(id);
+  }, [prefsReady, onboarded]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drawing, setDrawing] = useState(false);
+  const [draft, setDraft] = useState<LatLng[]>([]);
+  const draftProblem = draft.length ? validateArea(draft) : null;
+  const onMapPress = useCallback((p: LatLng) => setDraft((d) => (d.length >= 20 ? d : [...d, p])), []);
+  const startDrawing = () => {
+    setSelectedId(null);
+    setDraft([]);
+    setDrawing(true);
+  };
+  const applyDraft = () => {
+    if (validateArea(draft)) return;
+    patchFilters({ area: draft });
+    setDrawing(false);
+  };
 
   const { result, loading, error, expiredLeads, offlineSince } = useSearch(filters);
   const hits = useMemo(() => (cityFocus ? result.hits.filter((h) => h.listing.address.city === cityFocus) : result.hits), [result, cityFocus]);
@@ -97,6 +120,12 @@ export default function Explore() {
         </Banner>
       ) : null}
       <Text style={type.small}>{d.categoryHelp[filters.category]}</Text>
+      {filters.area ? (
+        <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+          <Chip icon="shapes-outline" label={`${t("area.drawn")}  ✕`} selected onPress={() => patchFilters({ area: null })} accessibilityHint="Removes the drawn search area" />
+          {result.hiddenApproximateCount ? <Text style={[type.tiny, { alignSelf: "center", flexShrink: 1 }]}>{t("area.approxHidden", { n: result.hiddenApproximateCount })}</Text> : null}
+        </View>
+      ) : null}
       {cityFocus ? (
         <View style={{ flexDirection: "row" }}>
           <Chip label={`Only ${cityFocus}  ✕`} selected onPress={() => setCityFocus(null)} accessibilityHint="Clears the city filter" />
@@ -198,7 +227,35 @@ export default function Explore() {
         />
       ) : (
         <View style={{ flex: 1 }}>
-          <ListingsMap hits={hits} center={area.center} selectedId={selectedId} onSelectListing={onSelectListing} onSelectArea={onSelectArea} />
+          <ListingsMap
+            hits={hits}
+            center={area.center}
+            selectedId={selectedId}
+            onSelectListing={onSelectListing}
+            onSelectArea={onSelectArea}
+            drawing={drawing}
+            areaPoints={drawing ? draft : (filters.area ?? [])}
+            onMapPress={onMapPress}
+          />
+          <View style={styles.drawBar} pointerEvents="box-none">
+            {drawing ? (
+              <View style={styles.drawPanel} testID="draw-panel">
+                <Text style={[type.small, { color: color.ink, fontWeight: "700" }]} accessibilityLiveRegion="polite">
+                  {draft.length < 3 ? t("area.tapHint", { n: draft.length }) : draftProblem ? AREA_PROBLEM_TEXT[draftProblem] : t("area.ready", { n: draft.length })}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  <Chip icon="arrow-undo-outline" label={t("area.undo")} onPress={() => setDraft((d) => d.slice(0, -1))} />
+                  <Chip label={t("area.cancel")} onPress={() => setDrawing(false)} />
+                  <Chip icon="search" label={t("area.search")} selected={!draftProblem && draft.length >= 3} onPress={applyDraft} accessibilityHint="Shows only homes inside the outline" />
+                </View>
+              </View>
+            ) : (
+              <View style={{ flexDirection: "row", gap: 8, alignSelf: "flex-start" }}>
+                <Chip icon="pencil-outline" label={filters.area ? t("area.redraw") : t("area.draw")} onPress={startDrawing} />
+                {filters.area ? <Chip label={t("area.clear")} onPress={() => patchFilters({ area: null })} /> : null}
+              </View>
+            )}
+          </View>
           <View style={styles.mapOverlay} pointerEvents="box-none">
             {config.demoMode ? (
               <View style={styles.mapLegend}>
@@ -208,7 +265,7 @@ export default function Explore() {
                 <Legend c={color.demo} label="Demo" />
               </View>
             ) : null}
-            {selected ? (
+            {drawing ? null : selected ? (
               <View style={{ gap: 6 }}>
                 <Pressable onPress={() => setSelectedId(null)} style={styles.closeSel} accessibilityRole="button" accessibilityLabel="Close preview">
                   <Icon name="close" size={18} />
@@ -251,6 +308,8 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center", gap: 8, padding: space.xl, marginVertical: space.md, backgroundColor: color.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: color.line },
   inlineBtn: { marginTop: 6, alignSelf: "flex-start", minHeight: 36, justifyContent: "center", paddingHorizontal: 12, borderRadius: radius.pill, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line },
   inlineBtnText: { fontSize: 13, fontWeight: "700", color: color.ink },
+  drawBar: { position: "absolute", left: space.md, right: space.md, top: space.md + 28, gap: 8 },
+  drawPanel: { gap: 8, padding: space.md, borderRadius: radius.md, backgroundColor: "rgba(255,255,255,0.97)", borderWidth: 1, borderColor: color.brand },
   mapOverlay: { position: "absolute", left: space.md, right: space.md, bottom: space.lg, gap: 8 },
   mapLegend: { flexDirection: "row", gap: 12, alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: color.line },
   mapHint: { alignSelf: "center", backgroundColor: color.ink, color: "#fff", fontSize: 13, fontWeight: "600", paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, overflow: "hidden", textAlign: "center" },

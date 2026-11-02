@@ -37,7 +37,7 @@ async function writeCache(cat: string, listings: Listing[]) {
   }
 }
 
-const EMPTY: SearchResult = { hits: [], hiddenUnverifiedCount: 0, hiddenOverBudgetCount: 0 };
+const EMPTY: SearchResult = { hits: [], hiddenUnverifiedCount: 0, hiddenOverBudgetCount: 0, hiddenApproximateCount: 0 };
 
 export function useSearch(filters: SearchFilters): { result: SearchResult; loading: boolean; error: string | null; expiredLeads: number; offlineSince: string | null } {
   const [state, setState] = useState({ result: EMPTY, loading: true, error: null as string | null, expiredLeads: 0, offlineSince: null as string | null });

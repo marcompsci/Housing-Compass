@@ -4,7 +4,7 @@
  *  2. send  — claim due notifications, deliver pushes via the Expo Push API, mark sent/failed.
  * Auth: requires the CRON_SECRET header so only the scheduler can trigger it.
  */
-import { DEFAULT_ALERT_PREFS, parseDocuments, planAlerts } from "../../../packages/core/src/index.ts";
+import { DEFAULT_ALERT_PREFS, normalizeAlertPrefs, parseDocuments, planAlerts } from "../../../packages/core/src/index.ts";
 import { observed } from "../_shared/observe.ts";
 import { adminClient, json } from "../_shared/auth.ts";
 
@@ -25,7 +25,7 @@ Deno.serve(
     const [{ data: favs }, { data: apps }, { data: prof }] = await Promise.all([
       db.from("favorites").select("listing_id").eq("user_id", userId),
       db.from("applications").select("listing_id,deadline,status").eq("user_id", userId),
-      db.from("user_profiles").select("quiet_start,quiet_end,utc_offset_minutes,max_push_per_day").eq("id", userId).maybeSingle(),
+      db.from("user_profiles").select("quiet_start,quiet_end,utc_offset_minutes,max_push_per_day,alert_kinds").eq("id", userId).maybeSingle(),
     ]);
     const docs: unknown[] = [];
     for (const s of mine) {
@@ -40,7 +40,7 @@ Deno.serve(
       applications: (apps ?? []).map((a) => ({ listingId: a.listing_id, deadline: a.deadline, status: a.status })),
       listings: parseDocuments(docs).listings,
       priceChanges: [],
-      prefs: prof ? { quietStart: prof.quiet_start, quietEnd: prof.quiet_end, utcOffsetMinutes: prof.utc_offset_minutes, maxPushPerDay: prof.max_push_per_day } : DEFAULT_ALERT_PREFS,
+      prefs: prof ? normalizeAlertPrefs({ quietStart: prof.quiet_start, quietEnd: prof.quiet_end, utcOffsetMinutes: prof.utc_offset_minutes, maxPushPerDay: prof.max_push_per_day, kinds: prof.alert_kinds }) : DEFAULT_ALERT_PREFS,
       now,
     });
     if (drafts.length) {

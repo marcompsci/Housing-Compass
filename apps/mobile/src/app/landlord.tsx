@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput } from "react-native";
 import { useSession } from "../auth/session";
@@ -19,6 +20,7 @@ export default function LandlordOnboarding() {
       <Text style={type.small}>
         List homes and message renters as a verified owner or manager. A person checks that you have the authority to rent each property before anything is published. Your documents are never shown publicly.
       </Text>
+      <Button kind="secondary" icon="speedometer-outline" label="Already approved? Open your dashboard" onPress={() => router.push("/landlord-dashboard")} testID="open-dashboard" />
       <Section title="How verification works">
         <Text style={type.small}>1. Tell us who you are and which properties you manage.</Text>
         <Text style={type.small}>2. A reviewer contacts you through the phone or website on public records (not just what you type here) and asks for proof of authority — e.g. a management agreement or property tax record in your or your company's name.</Text>

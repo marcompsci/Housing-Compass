@@ -132,7 +132,7 @@ export const useStore = create<State>()(
       },
       // Persist preferences and lists only; the search area is re-chosen each session (minimum location retention).
       partialize: (s) => ({
-        filters: { ...s.filters, center: null, commuteTo: null },
+        filters: { ...s.filters, center: null, commuteTo: null, area: null },
         view: s.view,
         favorites: s.favorites,
         compare: s.compare,

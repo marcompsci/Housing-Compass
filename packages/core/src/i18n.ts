@@ -1,13 +1,13 @@
 /**
  * Translations for trust-critical domain text (labels that MUST read the same everywhere).
- * Spanish was written in-house and needs a native-speaker review before launch — see docs/I18N.md.
+ * Spanish and Simplified Chinese were written in-house and need a native-speaker review before launch — see docs/I18N.md.
  */
 import type { Category, PriceBasis, VerificationLevel } from "./schema";
 import { CATEGORY_HELP, CATEGORY_LABEL } from "./categories";
 import { BASIS_LABEL, BASIS_SUFFIX } from "./pricing";
 import { LEVEL_EXPLAINER, LEVEL_LABEL } from "./trust/verification";
 
-export const LOCALES = ["en", "es"] as const;
+export const LOCALES = ["en", "es", "zh"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export interface DomainText {
@@ -56,7 +56,43 @@ const es: DomainText = {
   basisSuffix: { PER_BED: "/ cama / mes", PER_ROOM: "/ cuarto / mes", PER_UNIT: "/ unidad / mes" },
 };
 
-export const DOMAIN_TEXT: Record<Locale, DomainText> = { en, es };
+const zh: DomainText = {
+  category: {
+    PRIVATE_ROOM: "独立房间",
+    SHARED_COLIVING: "合租 / 共居",
+    STUDIO: "开间公寓",
+    ENTIRE_1BR: "整套一居室",
+    INCOME_RESTRICTED: "限收入住房",
+  },
+  categoryHelp: {
+    PRIVATE_ROOM: "合租房屋中属于你自己的房间。按房间计价。",
+    SHARED_COLIVING: "合住房间中的一个床位、学生公寓或共居空间。通常按床位计价。",
+    STUDIO: "你独自使用的整套开间公寓。",
+    ENTIRE_1BR: "你独自使用的整套一居室公寓——绝不是一个房间或一个床位。",
+    INCOME_RESTRICTED: "低于市场价、有收入上限的住房，通常通过抽签或候补名单申请。",
+  },
+  level: {
+    OFFICIAL_PORTAL: "官方平台",
+    PROPERTY_MANAGER_VERIFIED: "已与物业经理核实",
+    SOURCE_LISTED_UNVERIFIED: "未核实线索",
+    FLAGGED: "审核中",
+    EXPIRED: "已过期——需重新核实",
+  },
+  levelExplainer: {
+    OFFICIAL_PORTAL: "发布在政府官方住房平台上。不保证你会被录取，也不保证立即有空房。",
+    PROPERTY_MANAGER_VERIFIED:
+      "我们的审核员查看了文件，并通过自己找到的联系方式联系物业经理，确认其有权出租、地址、空房情况、租金、联系渠道和各项费用。任何房源都无法保证完全没有诈骗。",
+    SOURCE_LISTED_UNVERIFIED: "发布在其他网站上。没有人确认它是真实的、仍可出租或价格如所示。在看房并确认谁有权出租之前，绝不要付钱。",
+    FLAGGED: "在人工审核期间暂时隐藏。这并不表示该房源是诈骗。",
+    EXPIRED: "近期未经核实，因此在重新核实前隐藏。",
+  },
+  basis: { PER_BED: "按床位", PER_ROOM: "按房间", PER_UNIT: "整套" },
+  basisSuffix: { PER_BED: "/ 床位 / 月", PER_ROOM: "/ 房间 / 月", PER_UNIT: "/ 整套 / 月" },
+};
+
+export const DOMAIN_TEXT: Record<Locale, DomainText> = { en, es, zh };
+
+export const LOCALE_NAME: Record<Locale, string> = { en: "English", es: "Español", zh: "简体中文" };
 
 export function pickLocale(tags: readonly string[]): Locale {
   for (const t of tags) {

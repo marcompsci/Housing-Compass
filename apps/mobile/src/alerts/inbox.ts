@@ -1,4 +1,6 @@
-import { DEFAULT_ALERT_PREFS, planAlerts, type NotificationDraft } from "@housing-compass/core";
+import { planAlerts, type NotificationDraft } from "@housing-compass/core";
+import { usePrefs } from "../state/prefs";
+import { usePriceHistory } from "../state/priceHistory";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "../auth/session";
 import { now } from "../config";
@@ -23,6 +25,8 @@ export function useInbox(): { items: InboxItem[]; source: "server" | "device" } 
   const favorites = useStore((s) => s.favorites);
   const apps = useApplications((s) => s.items);
   const byId = useListingCache((s) => s.byId);
+  const prefs = usePrefs((s) => s.alertPrefs);
+  const priceChanges = usePriceHistory((s) => s.changes);
   const [server, setServer] = useState<InboxItem[] | null>(null);
 
   useEffect(() => {
@@ -42,12 +46,12 @@ export function useInbox(): { items: InboxItem[]; source: "server" | "device" } 
       favorites,
       applications: apps.map((a) => ({ listingId: a.listingId, deadline: a.deadline, status: a.status })),
       listings: Object.values(byId),
-      priceChanges: [],
-      prefs: DEFAULT_ALERT_PREFS,
+      priceChanges: priceChanges.map((c) => ({ listingId: c.listingId, oldCents: c.oldCents, newCents: c.newCents })),
+      prefs,
       now: now(),
     });
     return drafts.map((d) => ({ key: d.dedupeKey, title: d.title, body: d.body, listingId: d.listingId, at: d.scheduledFor, kind: d.kind }));
-  }, [searches, favorites, apps, byId]);
+  }, [searches, favorites, apps, byId, prefs, priceChanges]);
 
   return server ? { items: server, source: "server" } : { items: local, source: "device" };
 }

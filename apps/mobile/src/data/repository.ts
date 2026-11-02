@@ -5,7 +5,7 @@
  *    re-validated with core's ListingSchema before it can reach the UI.
  * Demo fixtures are only ever added client-side, and only in demo mode.
  */
-import { demoListings, expireIfStale, laResearchLeads, parseDocuments, researchLeads, type Listing, type SearchFilters } from "@housing-compass/core";
+import { areaToGeoJSON, demoListings, expireIfStale, laResearchLeads, parseDocuments, researchLeads, type Listing, type SearchFilters } from "@housing-compass/core";
 import { config, now } from "../config";
 import { log } from "../lib/log";
 import { supabase } from "./supabase";
@@ -66,6 +66,7 @@ export class SupabaseRepository implements ListingRepository {
       p_max_rent_cents: maxRent,
       p_limit: 500,
       p_region: f.region,
+      p_area: f.area && f.area.length >= 3 ? areaToGeoJSON(f.area) : null,
     });
     if (error) throw new Error(`search failed: ${error.message}`);
     const { listings, invalid } = parseDocuments((data as unknown[]) ?? []);

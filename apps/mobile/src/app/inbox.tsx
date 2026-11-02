@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useInbox } from "../alerts/inbox";
-import { Banner, Icon, type IconName } from "../components/ui";
+import { Banner, Button, Icon, type IconName } from "../components/ui";
 import { useStore } from "../state/store";
 import { color, radius, space, type } from "../theme";
 
@@ -18,6 +18,7 @@ export default function Inbox() {
   const markRead = useStore((s) => s.markNotificationRead);
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
+      <Button kind="secondary" icon="settings-outline" label="Alert settings" onPress={() => router.push("/alert-settings")} testID="alert-settings-link" />
       {source === "device" ? (
         <Text style={type.tiny}>Alerts are worked out on this device from your saved searches, favorites and applications. Sign in to get them as push notifications.</Text>
       ) : null}

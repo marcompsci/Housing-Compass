@@ -5,10 +5,12 @@ import { log } from "../lib/log";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthBootstrap } from "../auth/session";
+import { usePriceWatcher } from "../state/priceHistory";
 import { color } from "../theme";
 
 export default function RootLayout() {
   useAuthBootstrap();
+  usePriceWatcher();
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -37,6 +39,9 @@ export default function RootLayout() {
         <Stack.Screen name="affordability" options={{ presentation: "modal", title: "My numbers" }} />
         <Stack.Screen name="review/index" options={{ title: "Review queue" }} />
         <Stack.Screen name="review/[id]" options={{ title: "Review listing" }} />
+        <Stack.Screen name="welcome" options={{ presentation: "modal", title: "Welcome", headerShown: false }} />
+        <Stack.Screen name="alert-settings" options={{ title: "Alert settings" }} />
+        <Stack.Screen name="landlord-dashboard" options={{ title: "Your listings" }} />
       </Stack>
     </SafeAreaProvider>
   );

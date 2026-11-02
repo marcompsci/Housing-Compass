@@ -1,80 +1,78 @@
-import { ADAPTERS, LEVEL_EXPLAINER, LEVEL_LABEL, VERIFICATION_LEVELS, alameda211, doorway } from "@housing-compass/core";
+import { ADAPTERS, LOCALES, LOCALE_NAME, VERIFICATION_LEVELS, alameda211, doorway } from "@housing-compass/core";
 import { Linking, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { useLocale } from "../../i18n";
+import { useLocale, useT } from "../../i18n";
+import { usePrefs } from "../../state/prefs";
 import { Chip } from "../../components/ui";
 import { Button, Icon, Section } from "../../components/ui";
 import { openExternal } from "../../lib/links";
 import { color, levelTone, space, type } from "../../theme";
 import type { IconName } from "../../components/ui";
 
-const RED_FLAGS = [
-  "Asks for a deposit, application fee or “holding fee” before you can tour",
-  "Wants payment by wire transfer, crypto, gift cards or a payment app to a stranger",
-  "Says they're out of the country and will mail the keys",
-  "Rent is far below similar homes nearby",
-  "Pressures you to decide today, or won't show the inside",
-  "Email or phone doesn't match the property manager's official website",
-];
+const RED_FLAGS = ["help.flag1", "help.flag2", "help.flag3", "help.flag4", "help.flag5", "help.flag6"] as const;
 
 export default function Help() {
   const { locale, setLocale } = useLocale();
+  const { t, d } = useT();
+  const resetOnboarding = usePrefs((s) => s.resetOnboarding);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color.bg }} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.wrap}>
         <Text style={type.title} accessibilityRole="header">
-          Help & safety
+          {t("help.title")}
         </Text>
 
-        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }} accessibilityRole="radiogroup" accessibilityLabel="Language / Idioma">
-          <Text style={type.small}>Language / Idioma:</Text>
-          <Chip label="English" selected={locale === "en"} onPress={() => setLocale("en")} />
-          <Chip label="Español" selected={locale === "es"} onPress={() => setLocale("es")} />
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" }} accessibilityRole="radiogroup" accessibilityLabel="Language / Idioma / 语言">
+          <Text style={type.small}>Language / Idioma / 语言:</Text>
+          {LOCALES.map((l) => (
+            <Chip key={l} label={LOCALE_NAME[l]} selected={locale === l} onPress={() => setLocale(l)} />
+          ))}
         </View>
+        {locale !== "en" ? <Text style={type.tiny}>{t("common.translationNote")}</Text> : null}
 
-        <Button icon="business-outline" label="Official programs: Bay Area & Los Angeles" onPress={() => router.push("/programs")} />
+        <Button icon="business-outline" label={t("help.programs")} onPress={() => router.push("/programs")} />
 
-        <Section title="Free help, right now">
-          <Text style={type.small}>Official, free sources for affordable housing and shelter in the Bay Area.</Text>
+        <Section title={t("help.freeHelp")}>
+          <Text style={type.small}>{t("help.freeHelpBody")}</Text>
           <Button icon="shield-checkmark-outline" label="Doorway Housing Portal ↗" onPress={() => openExternal(doorway.homeUrl)} accessibilityHint="Official Bay Area affordable housing listings and applications" />
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Button style={{ flex: 1 }} kind="secondary" icon="call-outline" label="Call 211" onPress={() => (Platform.OS === "web" ? openExternal(alameda211.homeUrl) : Linking.openURL("tel:211"))} />
-            <Button style={{ flex: 1 }} kind="secondary" icon="chatbubble-outline" label="Text 898211" onPress={() => (Platform.OS === "web" ? openExternal(alameda211.homeUrl) : Linking.openURL("sms:898211"))} />
+            <Button style={{ flex: 1 }} kind="secondary" icon="call-outline" label={t("help.call211")} onPress={() => (Platform.OS === "web" ? openExternal(alameda211.homeUrl) : Linking.openURL("tel:211"))} />
+            <Button style={{ flex: 1 }} kind="secondary" icon="chatbubble-outline" label={t("help.text211")} onPress={() => (Platform.OS === "web" ? openExternal(alameda211.homeUrl) : Linking.openURL("sms:898211"))} />
           </View>
-          <Button kind="ghost" label="211 Alameda County housing page ↗" onPress={() => openExternal(alameda211.homeUrl)} />
+          <Button kind="ghost" label={t("help.alameda211")} onPress={() => openExternal(alameda211.homeUrl)} />
         </Section>
 
-        <Button kind="secondary" icon="calculator-outline" label="My numbers: what can I afford?" onPress={() => router.push("/affordability")} />
+        <Button kind="secondary" icon="calculator-outline" label={t("help.myNumbers")} onPress={() => router.push("/affordability")} />
 
-        <Section title="What our labels mean">
+        <Section title={t("help.labels")}>
           {VERIFICATION_LEVELS.map((lvl) => {
-            const t = levelTone[lvl];
+            const tone = levelTone[lvl];
             return (
               <View key={lvl} style={styles.level}>
-                <Icon name={t.icon as IconName} size={20} tint={t.fg} />
+                <Icon name={tone.icon as IconName} size={20} tint={tone.fg} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={[type.h3, { color: t.fg }]}>{LEVEL_LABEL[lvl]}</Text>
-                  <Text style={type.small}>{LEVEL_EXPLAINER[lvl]}</Text>
+                  <Text style={[type.h3, { color: tone.fg }]}>{d.level[lvl]}</Text>
+                  <Text style={type.small}>{d.levelExplainer[lvl]}</Text>
                 </View>
               </View>
             );
           })}
-          <Text style={type.tiny}>No app can guarantee a listing is scam-free. Appearing on a big listing website never counts as verified.</Text>
+          <Text style={type.tiny}>{t("help.noGuarantee")}</Text>
         </Section>
 
-        <Section title="Rental scam red flags">
+        <Section title={t("help.redFlags")}>
           {RED_FLAGS.map((f) => (
             <View key={f} style={styles.flag}>
               <Icon name="alert-circle-outline" size={18} tint={color.danger} />
-              <Text style={[type.body, { flex: 1 }]}>{f}</Text>
+              <Text style={[type.body, { flex: 1 }]}>{t(f)}</Text>
             </View>
           ))}
-          <Button icon="chatbubble-ellipses-outline" label="Check a message I received" onPress={() => router.push("/check-message")} />
-          <Button kind="secondary" label="Report a scam to the FTC ↗" onPress={() => openExternal("https://reportfraud.ftc.gov/")} />
+          <Button icon="chatbubble-ellipses-outline" label={t("help.checkMessage")} onPress={() => router.push("/check-message")} />
+          <Button kind="secondary" label={t("help.ftc")} onPress={() => openExternal("https://reportfraud.ftc.gov/")} />
         </Section>
 
-        <Section title="Where our data comes from">
+        <Section title={t("help.dataSources")}>
           {ADAPTERS.filter((a) => a.id !== "manual-review").map((a) => (
             <View key={a.id} style={styles.source}>
               <Text style={type.h3}>{a.name}</Text>
@@ -85,13 +83,13 @@ export default function Help() {
           ))}
         </Section>
 
-        <Button kind="secondary" icon="key-outline" label="Are you a landlord or property manager?" onPress={() => router.push("/landlord")} />
-        <Button kind="ghost" icon="construct-outline" label="Reviewer tools" onPress={() => router.push("/review")} accessibilityHint="For Housing Compass reviewers" />
+        <Button kind="secondary" icon="key-outline" label={t("help.landlord")} onPress={() => router.push("/landlord")} />
+        <Button kind="ghost" icon="play-circle-outline" label={t("help.tour")} onPress={() => { resetOnboarding(); router.push("/welcome"); }} />
+        <Button kind="ghost" icon="construct-outline" label={t("help.reviewer")} onPress={() => router.push("/review")} accessibilityHint="For Housing Compass reviewers" />
 
-        <Section title="Your privacy">
-          <Text style={type.small}>
-            Your location is used once, rounded to about 1 km, and never sent to our servers. Favorites, saved searches and reports stay on this device until accounts launch. We don't sell data or show ads.
-          </Text>
+        <Section title={t("help.privacy")}>
+          <Text style={type.small}>{t("help.privacyBody")}</Text>
+          <Button kind="ghost" icon="download-outline" label={t("help.myData")} onPress={() => router.push("/account")} />
         </Section>
       </ScrollView>
     </SafeAreaView>

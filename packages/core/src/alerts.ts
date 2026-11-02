@@ -28,9 +28,32 @@ export interface AlertPrefs {
   /** Minutes east of UTC for the user's time zone, e.g. Pacific Standard = -480. */
   utcOffsetMinutes: number;
   maxPushPerDay: number;
+  /** Alert kinds the user wants. Missing = all kinds (older saved prefs). */
+  kinds?: NotificationKind[];
 }
 
-export const DEFAULT_ALERT_PREFS: AlertPrefs = { quietStart: 21, quietEnd: 8, utcOffsetMinutes: -480, maxPushPerDay: 5 };
+export const NOTIFICATION_KINDS: NotificationKind[] = ["saved_search_match", "deadline_reminder", "listing_changed", "listing_expired"];
+export const NOTIFICATION_KIND_LABEL: Record<NotificationKind, { label: string; help: string }> = {
+  saved_search_match: { label: "New matches for saved searches", help: "Only searches you turned alerts on for." },
+  deadline_reminder: { label: "Application deadlines", help: "7 days, 2 days and the day of." },
+  listing_changed: { label: "Price changes on saved homes", help: "In the app only — never a push." },
+  listing_expired: { label: "Saved homes that are no longer shown", help: "Expired or removed pending review." },
+};
+
+export const DEFAULT_ALERT_PREFS: AlertPrefs = { quietStart: 21, quietEnd: 8, utcOffsetMinutes: -480, maxPushPerDay: 5, kinds: NOTIFICATION_KINDS };
+
+/** Validate prefs coming from a form or the database. */
+export function normalizeAlertPrefs(p: Partial<AlertPrefs>): AlertPrefs {
+  const hour = (h: unknown, d: number | null) => (h === null ? null : typeof h === "number" && Number.isInteger(h) && h >= 0 && h <= 23 ? h : d);
+  const kinds = Array.isArray(p.kinds) ? NOTIFICATION_KINDS.filter((k) => p.kinds!.includes(k)) : NOTIFICATION_KINDS;
+  return {
+    quietStart: hour(p.quietStart, DEFAULT_ALERT_PREFS.quietStart),
+    quietEnd: hour(p.quietEnd, DEFAULT_ALERT_PREFS.quietEnd),
+    utcOffsetMinutes: typeof p.utcOffsetMinutes === "number" && Math.abs(p.utcOffsetMinutes) <= 14 * 60 ? Math.round(p.utcOffsetMinutes) : DEFAULT_ALERT_PREFS.utcOffsetMinutes,
+    maxPushPerDay: typeof p.maxPushPerDay === "number" ? Math.max(0, Math.min(20, Math.round(p.maxPushPerDay))) : DEFAULT_ALERT_PREFS.maxPushPerDay,
+    kinds,
+  };
+}
 
 export interface AlertInput {
   userId: string;
@@ -147,9 +170,10 @@ export function planAlerts(i: AlertInput): NotificationDraft[] {
     }
   }
 
-  // Quiet hours + daily push cap (extra pushes become in-app only)
+  // Kinds the user turned off are dropped; quiet hours + daily push cap (extra pushes become in-app only)
+  const wanted = new Set(i.prefs.kinds ?? NOTIFICATION_KINDS);
   let pushes = 0;
-  return out.map((n) => {
+  return out.filter((n) => wanted.has(n.kind)).map((n) => {
     let channel = n.channel;
     if (channel === "push") {
       pushes += 1;

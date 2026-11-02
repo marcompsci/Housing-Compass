@@ -1,5 +1,10 @@
-import { affordableMonthlyCents, formatUsd } from "@housing-compass/core";
-import { router } from "expo-router";
+import { affordableMonthlyCents, formatUsd, moveInTotal, savingsPlan } from "@housing-compass/core";
+import { router, useLocalSearchParams } from "expo-router";
+import { now } from "../config";
+import { useListing } from "../data/hooks";
+import { useT } from "../i18n";
+import { shortDate } from "../lib/format";
+import { usePrefs } from "../state/prefs";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Banner, Button, Chip, KV, Section } from "../components/ui";
@@ -15,6 +20,16 @@ export default function MyNumbers() {
   const [savings, setSavings] = useState(profile ? String(profile.savingsCents / 100) : "");
   const incomeCents = toCents(income);
   const valid = incomeCents >= 0 && !Number.isNaN(incomeCents) && !Number.isNaN(toCents(savings));
+  const { t } = useT();
+  const params = useLocalSearchParams<{ listing?: string }>();
+  const { listing } = useListing(params.listing ? decodeURIComponent(String(params.listing)) : null);
+  const goal = usePrefs((s) => s.savings);
+  const setGoal = usePrefs((s) => s.setSavings);
+  const listingTarget = listing ? moveInTotal(listing).amountCents : null;
+  const [target, setTarget] = useState(listingTarget !== null ? String(listingTarget / 100) : goal ? String(goal.targetCents / 100) : "");
+  const [perPeriod, setPerPeriod] = useState(goal ? String(goal.perPeriodCents / 100) : "");
+  const [period, setPeriod] = useState<"week" | "month">(goal?.period ?? "week");
+  const plan = toCents(target) > 0 ? savingsPlan({ targetCents: toCents(target), savedCents: toCents(savings), perPeriodCents: toCents(perPeriod), period, now: now() }) : null;
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
@@ -35,6 +50,35 @@ export default function MyNumbers() {
       </Section>
       <Section title="Savings for moving in">
         <TextInput value={savings} onChangeText={setSavings} keyboardType="decimal-pad" placeholder="e.g. 2500" style={styles.input} accessibilityLabel="Savings available for move-in costs in dollars" />
+      </Section>
+      <Section title={t("savings.title")}>
+        <Text style={type.small}>{listing && listingTarget !== null ? t("savings.fromListing", { title: listing.title }) : t("savings.intro")}</Text>
+        <TextInput value={target} onChangeText={setTarget} keyboardType="decimal-pad" placeholder={t("savings.targetPh")} style={styles.input} accessibilityLabel={t("savings.targetPh")} testID="savings-target" />
+        <View style={styles.row}>
+          <Chip label={t("savings.perWeek")} selected={period === "week"} onPress={() => setPeriod("week")} />
+          <Chip label={t("savings.perMonth")} selected={period === "month"} onPress={() => setPeriod("month")} />
+        </View>
+        <TextInput value={perPeriod} onChangeText={setPerPeriod} keyboardType="decimal-pad" placeholder={period === "week" ? t("savings.perWeekPh") : t("savings.perMonthPh")} style={styles.input} accessibilityLabel={t("savings.perPeriodLabel")} testID="savings-rate" />
+        {plan ? (
+          <View style={{ gap: 4 }} testID="savings-result">
+            <KV k={t("savings.stillNeed")} v={formatUsd(plan.remainingCents)} strong />
+            <Text style={[type.h3, { color: plan.status === "ready" ? color.verified : plan.status === "long_way" ? color.warn : color.ink }]}>
+              {plan.status === "ready"
+                ? t("savings.ready")
+                : plan.status === "no_savings_rate"
+                  ? t("savings.addRate")
+                  : t(period === "week" ? "savings.weeks" : "savings.months", { n: plan.periodsNeeded ?? 0, date: shortDate(plan.readyBy!) })}
+            </Text>
+            {plan.status === "long_way" ? <Text style={type.small}>{t("savings.longWay")}</Text> : null}
+          </View>
+        ) : null}
+        <Text style={type.tiny}>{t("savings.note")}</Text>
+        <Button
+          kind="secondary"
+          label={t("savings.save")}
+          disabled={toCents(target) <= 0}
+          onPress={() => setGoal({ targetCents: toCents(target), savedCents: toCents(savings), perPeriodCents: toCents(perPeriod), period, listingId: listing?.id ?? null })}
+        />
       </Section>
       <Button
         label="Save on this device"

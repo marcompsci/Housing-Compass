@@ -13,7 +13,10 @@
 ## 1b. Edge functions & schedules
 ```bash
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=… CRON_SECRET=$(openssl rand -hex 32) EXPO_ACCESS_TOKEN=…
-supabase functions deploy ingest notify health
+supabase functions deploy ingest notify health photo-scan
+# Optional, for listing photos: a malware-scanning service that returns {clean, dhash, detail}
+# supabase secrets set PHOTO_SCANNER_URL=https://… PHOTO_SCANNER_TOKEN=…
+# Then add a Storage webhook on bucket listing-photos-quarantine → POST /functions/v1/photo-scan {"photoId": …} with the x-cron-secret header.
 ```
 `supabase/functions/deno.json` enables sloppy imports so functions can import `packages/core` directly. If your CLI version doesn't bundle files outside `supabase/functions`, copy `packages/core/src` into `supabase/functions/_core` in a pre-deploy step.
 

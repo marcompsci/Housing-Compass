@@ -46,7 +46,21 @@ const shot = (name, fullPage = false) => page.screenshot({ path: join(out, `${na
 const tab = (label) => page.getByRole("button", { name: label, exact: true }).first().click();
 
 await page.goto(base);
+// ── v0.14: first-run onboarding (3 steps, skippable), shown once
+await page.getByTestId("welcome").waitFor();
+check((await page.getByText("Welcome to Housing Compass").count()) === 1, "first launch shows the welcome tour");
+await shot("28-welcome");
+await page.getByTestId("welcome-next").click();
+await page.getByText("What are you looking for?").waitFor();
+check((await page.getByText(/never mixed together/).count()) === 1, "onboarding explains per-bed vs per-room vs whole-unit pricing");
+await page.getByTestId("welcome-next").click();
+await page.getByText("Your location stays private").waitFor();
+await page.getByTestId("welcome-finish").click();
 await page.getByText("Showing official & manager-verified homes only").waitFor();
+await page.reload();
+await page.getByText("Showing official & manager-verified homes only").waitFor();
+await page.waitForTimeout(500);
+check((await page.getByTestId("welcome").count()) === 0, "welcome tour is not shown again after finishing");
 await page.waitForTimeout(600);
 await shot("01-explore-verified-default");
 
@@ -269,6 +283,119 @@ await page.goto(`${base}/landlord`);
 await page.getByText("How verification works").waitFor();
 await shot("27-landlord-onboarding");
 check(true, "landlord onboarding explains authority checks");
+
+// ── v0.14: tour confirmed (demo) → calendar file + tour-day checklist
+await page.goto(base);
+await page.getByText("DEMO · Sunny room in 3BR flat").first().click();
+await page.getByTestId("message-manager").click();
+await page.getByText(/tour · .* · proposed/).first().waitFor();
+await page.getByRole("button", { name: /Simulate manager confirming/ }).first().click();
+await page.getByText(/tour · .* · confirmed/).first().waitFor();
+const [ics] = await Promise.all([page.waitForEvent("download"), page.getByTestId("add-to-calendar").first().click()]);
+const icsText = await readFile(await ics.path(), "utf8");
+check(ics.suggestedFilename().endsWith(".ics") && icsText.includes("BEGIN:VCALENDAR") && icsText.includes("TRIGGER:-PT60M") && /never pay a deposit/i.test(icsText.replace(/\r\n /g, "")), "confirmed tour exports a valid .ics with a reminder and the safety note");
+await page.getByRole("button", { name: /Tour-day checklist/ }).first().click();
+await page.getByTestId("checklist-item").first().click();
+check((await page.getByRole("button", { name: /Tour-day checklist \(1\// }).count()) === 1, "tour-day checklist ticks are counted");
+await shot("29-tour-calendar-checklist");
+
+// ── v0.14: reviewer tools — held messages, landlord applications, lead expiry countdown
+await page.goto(`${base}/review`);
+await page.getByRole("button", { name: /Held messages \(/ }).click();
+await page.getByTestId("held-item").first().waitFor();
+check((await page.getByText(/gift card/).count()) >= 1, "held demo message is in the reviewer queue");
+await page.getByLabel("Reason for your decision").first().fill("This is a scam");
+check(await page.getByRole("button", { name: "Keep hidden" }).first().isDisabled(), "held-message decisions refuse verdict language");
+await page.getByLabel("Reason for your decision").first().fill("Asked for a gift-card deposit before any tour");
+await page.getByRole("button", { name: "Keep hidden" }).first().click();
+await page.waitForTimeout(300);
+check((await page.getByText(/Held messages \(0\)/).count()) === 1, "kept-hidden message leaves the queue");
+await page.getByRole("button", { name: /Landlords \(/ }).click();
+await page.getByTestId("landlord-item").first().waitFor();
+check(await page.getByRole("button", { name: "Approve", exact: true }).isDisabled(), "landlord approval is disabled until all four authority checks pass");
+for (const box of await page.getByRole("checkbox").all()) await box.click();
+for (const note of await page.getByLabel(/^Note for /).all()) await note.fill("Found on county assessor site");
+await page.getByLabel("Reviewer notes").fill("Called the office number on their official site; saw management agreement");
+await shot("30-landlord-review");
+await page.getByRole("button", { name: "Approve", exact: true }).click();
+await page.waitForTimeout(300);
+check((await page.getByText(/Landlords \(0\)/).count()) === 1, "approved landlord application leaves the queue");
+await page.getByRole("button", { name: /Research leads \(/ }).click();
+await page.getByTestId("lead-expiry-summary").waitFor();
+check((await page.getByText(/days left|Hides today|past due/).count()) > 0, "lead queue shows an expiry countdown");
+await shot("31-lead-expiry");
+
+// ── v0.14: draw-an-area search on the map
+await page.goto(base);
+await page.getByRole("tab", { name: "Map" }).click();
+await page.waitForTimeout(1500);
+await page.getByRole("button", { name: "Draw an area" }).click();
+await page.getByTestId("draw-panel").waitFor();
+const box = await page.getByTestId("map").boundingBox();
+const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+for (const [dx, dy] of [[-90, -90], [90, -90], [90, 90], [-90, 90]]) {
+  await page.mouse.click(cx + dx, cy + dy);
+  await page.waitForTimeout(150);
+}
+check((await page.getByText(/4 points/).count()) === 1, "tapping the map adds outline points");
+await shot("32-draw-area");
+await page.getByRole("button", { name: "Search this area" }).click();
+await page.getByRole("tab", { name: "List" }).click();
+await page.getByText("Drawn area").first().waitFor();
+check(true, "a drawn area becomes a removable search filter");
+await page.getByText("Drawn area").first().click();
+await page.waitForTimeout(200);
+check((await page.getByText("Drawn area").count()) === 0, "drawn area can be cleared");
+
+// ── v0.14: listing extras — response metrics, price history, travel, share, savings
+await page.getByText("DEMO · Sunny room in 3BR flat").first().click();
+await page.getByText("What it costs").waitFor();
+check((await page.getByText(/Replies to 92% of messages/).count()) === 1, "demo listing shows manager response metrics (labeled demo)");
+check((await page.getByText("Price history", { exact: true }).count()) === 1 && (await page.getByText("Demo listings have no price history.").count()) === 1, "price history panel never invents history for demo listings");
+check((await page.getByText(/Add a commute destination in Filters/).count()) === 1, "travel panel asks for a destination instead of guessing");
+check((await page.getByTestId("share-listing").count()) === 1, "listing can be shared");
+await page.getByRole("button", { name: "Plan my savings for this move-in" }).click();
+await page.getByTestId("savings-rate").fill("150");
+await page.getByTestId("savings-result").waitFor();
+check((await page.getByText(/About \d+ weeks — ready around/).count()) === 1, "move-in savings planner gives weeks and a date");
+await shot("33-savings-plan");
+
+// ── v0.14: document checklist on tracked applications
+await page.goto(`${base}/applications`);
+await page.getByTestId("docs-toggle").first().click();
+check((await page.getByText("Send documents only through the official application").count()) >= 1, "application document checklist ends with the privacy rule");
+await shot("34-application-documents");
+
+// ── v0.14: alert settings + data export + landlord dashboard
+await page.goto(`${base}/inbox`);
+await page.getByTestId("alert-settings-link").click();
+await page.getByTestId("alert-settings").waitFor();
+await page.getByRole("switch", { name: "Application deadlines", exact: true }).click();
+await page.waitForTimeout(200);
+check(!(await page.getByRole("switch", { name: "Application deadlines", exact: true }).isChecked()), "alert kinds can be turned off");
+await shot("35-alert-settings");
+await page.goto(`${base}/account`);
+const [dl] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-data").click()]);
+const exported = JSON.parse(await readFile(await dl.path(), "utf8"));
+check(exported.format === "housing-compass-export" && Array.isArray(exported.device.favorites) && !JSON.stringify(exported).includes("commuteTo\":{"), "data export downloads readable JSON without location");
+await page.goto(`${base}/landlord-dashboard`);
+await page.getByTestId("dashboard-listing").first().waitFor();
+check((await page.getByText("Demo dashboard").count()) === 1, "landlord dashboard (demo) lists the manager's listings");
+await shot("36-landlord-dashboard");
+
+// ── v0.14: Simplified Chinese + translated listing detail (Spanish)
+await page.goto(`${base}/help`);
+await page.getByRole("button", { name: "简体中文" }).click();
+await page.getByText("帮助与安全").waitFor();
+check((await page.getByText("租房诈骗警示信号").count()) === 1, "Help & safety renders in Simplified Chinese");
+await shot("37-chinese-help");
+await page.getByRole("button", { name: "Español" }).click();
+await page.goto(base);
+await page.getByText("DEMO · Sunny room in 3BR flat").first().click();
+await page.getByText("Cuánto cuesta").waitFor();
+check((await page.getByText("De dónde viene").count()) === 1, "listing detail renders in Spanish");
+await page.goto(`${base}/help`);
+await page.getByRole("button", { name: "English" }).click();
 
 // ── Phase 9: Spanish
 await page.goto(`${base}/help`);

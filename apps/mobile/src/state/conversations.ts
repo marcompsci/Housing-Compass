@@ -13,7 +13,7 @@ import { supabase } from "../data/supabase";
 import { useSessionStore } from "../auth/session";
 import { uuid } from "./applications";
 
-export interface ThreadMessage { id: string; mine: boolean; body: string; held: boolean; holdReasons: string[]; masked: boolean; at: string }
+export interface ThreadMessage { id: string; mine: boolean; body: string; held: boolean; holdReasons: string[]; masked: boolean; at: string; review?: "released" | "rejected" }
 export interface Tour { id: string; startsAt: string; mode: "in_person" | "live_video"; status: "proposed" | "confirmed" | "declined" | "cancelled" | "completed" }
 export interface Thread {
   id: string;
@@ -38,6 +38,12 @@ interface ConvState {
   open(l: Listing): Promise<string>;
   send(threadId: string, text: string): Promise<ThreadMessage>;
   proposeTour(threadId: string, startsAt: string, mode: Tour["mode"]): Promise<void>;
+  /** Demo threads only: simulate the (fictional) manager confirming a tour, to try the tour-day tools. */
+  confirmDemoTour(threadId: string, tourId: string): void;
+  /** Re-read tour status from the server (managers confirm there). */
+  refreshTours(threadId: string): Promise<void>;
+  /** Demo review mode only: record a reviewer's decision on a held demo message. */
+  reviewDemoHeld(threadId: string, messageId: string, decision: "release" | "reject"): void;
 }
 
 export const canMessage = (l: Listing) =>
@@ -87,6 +93,30 @@ export const useConversations = create<ConvState>()(
           tour.id = data.id as string;
         }
         set({ threads: get().threads.map((x) => (x.id === threadId ? { ...x, tours: [...x.tours, tour] } : x)) });
+      },
+      confirmDemoTour: (threadId, tourId) => {
+        const t = get().threads.find((x) => x.id === threadId);
+        if (!t?.demo) return;
+        set({ threads: get().threads.map((x) => (x.id === threadId ? { ...x, tours: x.tours.map((y) => (y.id === tourId ? { ...y, status: "confirmed" as const } : y)) } : x)) });
+      },
+      reviewDemoHeld: (threadId, messageId, decision) => {
+        const t = get().threads.find((x) => x.id === threadId);
+        if (!t?.demo) return;
+        set({
+          threads: get().threads.map((x) =>
+            x.id === threadId
+              ? { ...x, messages: x.messages.map((m) => (m.id === messageId ? { ...m, held: decision === "reject", review: decision === "release" ? ("released" as const) : ("rejected" as const) } : m)) }
+              : x,
+          ),
+        });
+      },
+      refreshTours: async (threadId) => {
+        const t = get().threads.find((x) => x.id === threadId);
+        if (!t || t.demo || !supabase) return;
+        const { data } = await supabase.from("viewings").select("id,starts_at,mode,status").eq("conversation_id", threadId).order("starts_at");
+        if (!data) return;
+        const tours: Tour[] = data.map((v) => ({ id: v.id as string, startsAt: v.starts_at as string, mode: v.mode as Tour["mode"], status: v.status as Tour["status"] }));
+        set({ threads: get().threads.map((x) => (x.id === threadId ? { ...x, tours } : x)) });
       },
     }),
     { name: "housing-compass-conversations-v1", storage: createJSONStorage(() => AsyncStorage) },

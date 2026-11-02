@@ -5,7 +5,49 @@ import { runSync, useEmailOtp, useSession, useSessionStore } from "../auth/sessi
 import { Banner, Button, KV, Section } from "../components/ui";
 import { backendEnabled, supabase } from "../data/supabase";
 import { useStore } from "../state/store";
+import { clearThisDevice, exportMyData } from "../lib/myData";
 import { HIT, color, radius, space, type } from "../theme";
+
+function DeviceDataSection({ signedIn }: { signedIn: boolean }) {
+  const [msg, setMsg] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  return (
+    <Section title="Download or clear your data">
+      <Text style={type.small}>
+        {signedIn ? "Download a copy of everything Housing Compass keeps for you — on this device and in your account — as a readable file." : "Download a copy of everything Housing Compass keeps on this device as a readable file."}
+      </Text>
+      <Button
+        kind="secondary"
+        icon="download-outline"
+        label="Download my data"
+        testID="export-data"
+        onPress={async () => {
+          try {
+            const r = await exportMyData(signedIn);
+            setMsg(r === "downloaded" ? "Saved to your downloads." : "");
+          } catch (e) {
+            setMsg((e as Error).message);
+          }
+        }}
+      />
+      {msg ? <Text style={type.tiny}>{msg}</Text> : null}
+      {confirmClear ? (
+        <Button
+          kind="danger"
+          label="Yes, clear this device"
+          onPress={async () => {
+            await clearThisDevice();
+            setConfirmClear(false);
+            setMsg("Everything on this device was cleared.");
+          }}
+        />
+      ) : (
+        <Button kind="danger" icon="phone-portrait-outline" label="Clear everything on this device" onPress={() => setConfirmClear(true)} />
+      )}
+      <Text style={type.tiny}>Clearing removes saved homes, searches, applications, messages, checklists and your numbers from this device. It doesn't delete your account.</Text>
+    </Section>
+  );
+}
 
 export default function Account() {
   const session = useSession();
@@ -27,6 +69,7 @@ export default function Account() {
           Everything you save stays on this device. Accounts sync favorites, saved searches and reports once the app is connected to its server.
         </Banner>
         <KV k="Saved on this device" v={`${local.fav} favorites · ${local.searches} searches · ${local.reports} reports`} />
+        <DeviceDataSection signedIn={false} />
       </ScrollView>
     );
   }
@@ -79,6 +122,7 @@ export default function Account() {
           <Button kind="danger" icon="trash-outline" label="Delete my data" onPress={() => setConfirmDelete(true)} />
         )}
       </Section>
+      <DeviceDataSection signedIn />
     </ScrollView>
   );
 }

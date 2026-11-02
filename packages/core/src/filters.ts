@@ -3,6 +3,7 @@ import { categorize } from "./categories";
 import { budgetStatus, DEFAULT_BUDGET, type BudgetPrefs, type BudgetStatus } from "./budget";
 import { haversineKm, inRegion, type LatLng, type RegionId } from "./geo";
 import { isPubliclyVisible } from "./trust/verification";
+import { listingInArea } from "./area";
 
 export type Tri = "any" | "yes";
 
@@ -33,6 +34,8 @@ export interface SearchFilters {
   /** Straight-line distance to a commute destination; travel time needs a routing provider. */
   commuteTo: LatLng | null;
   maxCommuteKm: number | null;
+  /** Hand-drawn search area (3–20 points). Approximate (city/ZIP) pins never match an area. */
+  area: LatLng[] | null;
   sort: "price_asc" | "distance" | "recently_checked";
 }
 
@@ -57,6 +60,7 @@ export const DEFAULT_FILTERS: SearchFilters = {
   radiusKm: null,
   commuteTo: null,
   maxCommuteKm: null,
+  area: null,
   sort: "price_asc",
 };
 
@@ -73,6 +77,8 @@ export interface SearchResult {
   hits: SearchHit[];
   hiddenUnverifiedCount: number;
   hiddenOverBudgetCount: number;
+  /** Matches that were left out of a drawn area only because their pin is approximate. */
+  hiddenApproximateCount: number;
 }
 
 /** null → unknown */
@@ -87,6 +93,7 @@ function attr(value: boolean | null, wanted: boolean, includeUnknown: boolean, n
 export function search(listings: Listing[], f: SearchFilters): SearchResult {
   let hiddenUnverifiedCount = 0;
   let hiddenOverBudgetCount = 0;
+  let hiddenApproximateCount = 0;
   const hits: SearchHit[] = [];
 
   for (const l of listings) {
@@ -138,6 +145,10 @@ export function search(listings: Listing[], f: SearchFilters): SearchResult {
     if (f.radiusKm !== null && distanceKm !== null && distanceKm > f.radiusKm) continue;
     const commuteKm = f.commuteTo ? haversineKm(f.commuteTo, l.location) : null;
     if (f.maxCommuteKm !== null && commuteKm !== null && commuteKm > f.maxCommuteKm) continue;
+    if (f.area && f.area.length >= 3 && !listingInArea(l, f.area)) {
+      if (listingInArea(l, f.area, true)) hiddenApproximateCount += 1;
+      continue;
+    }
 
     hits.push({ listing: l, budget: b, distanceKm, commuteKm, unconfirmed });
   }
@@ -158,5 +169,5 @@ export function search(listings: Listing[], f: SearchFilters): SearchResult {
     return a.listing.pricing.baseRentCents - b.listing.pricing.baseRentCents;
   });
 
-  return { hits, hiddenUnverifiedCount, hiddenOverBudgetCount };
+  return { hits, hiddenUnverifiedCount, hiddenOverBudgetCount, hiddenApproximateCount };
 }
