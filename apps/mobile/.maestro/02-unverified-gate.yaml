@@ -1,0 +1,9 @@
+appId: com.phoronomicstudios.housingcompass
+---
+- launchApp: { clearState: true }
+- tapOn: { id: "show-unverified" }
+- assertVisible: "Unverified leads have not been checked by anyone"
+- tapOn: { id: "ack-unverified" }
+- assertVisible: "Unverified leads are showing"
+- tapOn: "Hide unverified leads"
+- assertVisible: "Showing official & manager-verified homes only"
