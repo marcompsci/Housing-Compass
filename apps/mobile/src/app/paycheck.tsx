@@ -2,12 +2,12 @@
  * Paycheck planner: enter how often you're paid and how much, and see which paycheck has to
  * cover rent and each bill (and how much to set aside), plus a 30-day balance forecast.
  */
-import { cashFlowForecast, monthlyIncomeCents, paycheckPlan, upcomingObligations } from "@housing-compass/core";
+import { cashFlowForecast, leftoverSplit, monthlyIncomeCents, paycheckPlan, upcomingObligations } from "@housing-compass/core";
 import { PaySetupForm } from "../components/PaySetupForm";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today, usd } from "../components/forms";
-import { Banner, Button, KV, Section, Tag } from "../components/ui";
+import { Banner, Button, Chip, KV, Section, Tag } from "../components/ui";
 import { now } from "../config";
 import { useT } from "../i18n";
 import { LockGate } from "../lib/lock";
@@ -72,8 +72,28 @@ function PaycheckScreen() {
               ))}
               <KV k={t("pay.setAsideK")} v={usd(b.setAsideCents)} strong />
               <KV k={t("pay.leftK")} v={usd(b.leftCents)} />
+              {b.leftCents > 0 ? (
+                (() => {
+                  const sp = leftoverSplit(b.leftCents, r.splitPct);
+                  return <Text style={type.tiny}>{t("split2.line", { goals: usd(sp.goalsCents), debt: usd(sp.debtCents), buffer: usd(sp.bufferCents) })}</Text>;
+                })()
+              ) : null}
             </View>
           ))}
+          <View style={formStyles.card} testID="split-pct">
+            <Text style={type.h3}>{t("split2.title")}</Text>
+            <Text style={type.tiny}>{t("split2.body")}</Text>
+            <View style={formStyles.row}>
+              {[
+                [50, 30],
+                [30, 30],
+                [20, 50],
+                [0, 0],
+              ].map(([g, d]) => (
+                <Chip key={`${g}-${d}`} label={g || d ? t("split2.opt", { goals: g!, debt: d! }) : t("split2.none")} selected={r.splitPct.goals === g && r.splitPct.debt === d} onPress={() => r.setSplitPct({ goals: g!, debt: d! })} />
+              ))}
+            </View>
+          </View>
           <Button
             kind={r.remindersOn ? "secondary" : "primary"}
             icon="notifications-outline"

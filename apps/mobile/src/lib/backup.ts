@@ -22,6 +22,8 @@ export function makeBackup(now: Date): RenterBackup {
       goals: r.goals,
       unusedSubs: r.unusedSubs,
       creditDone: r.creditDone,
+      emergencyCents: r.emergencyCents,
+      splitPct: r.splitPct,
     },
   };
 }

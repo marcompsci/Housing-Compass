@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.18). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.19). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -37,10 +37,15 @@ PLAN EVERY PAYCHECK
 • Forecast your balance for the next 30 days and get warned before it dips below $0.
 • Import your bank's CSV to mark rent and bills paid — no bank login.
 
+KNOW IF A HOME FITS
+• Every listing shows how it fits your take-home pay and bills, and how long saving the move-in cost takes.
+• See paydays and every due date on a money calendar.
+
 GET OUT OF DEBT AND BUILD CREDIT
 • Compare avalanche and snowball payoff plans.
 • Check your credit card use and follow a simple credit checklist.
 • Find money you may be owed: unclaimed property, tax credits and bill discounts from official programs.
+• Ask your landlord to report on-time rent, or ask for a payment plan, with ready-made letters.
 
 PROTECT YOUR DEPOSIT
 • Make a dated, room-by-room move-in condition record with photos.

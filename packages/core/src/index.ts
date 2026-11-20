@@ -45,3 +45,4 @@ export * from "./renterTools";
 export * from "./localRules";
 export * from "./bills";
 export * from "./money";
+export * from "./insights";

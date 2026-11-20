@@ -742,6 +742,80 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
 }
 function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.length} goals, pay=${!!s.pay}`; }
 
+// ── v0.19: listing fit, letters, calendar, statement insights, money check, emergency fund, payoff dates, leftover split
+{
+  await page.goto(base);
+  await page.getByText("DEMO · Sunny room in 3BR flat").first().click();
+  await page.getByTestId("fit-panel").waitFor();
+  check(/Left each month/.test(await page.getByTestId("fit-panel").innerText()), "listing shows whether it fits your money");
+  await page.getByTestId("fit-goal").click();
+  check((await page.getByText("Savings goal created — view it").count()) === 1, "a move-in savings goal can be created from a listing");
+  await page.getByTestId("fit-panel").scrollIntoViewIfNeeded();
+  await shot("59-listing-fit");
+
+  await page.goto(`${base}/letters`);
+  await page.getByTestId("letters").waitFor();
+  check((await page.getByTestId("let-rr").count()) === 1 && (await page.getByTestId("let-pp").count()) === 1, "letters for rent reporting and payment plans");
+  await page.getByTestId("let-pp").click();
+  check((await page.getByText(/Enter the amount owed/).count()) === 1, "payment plan letter checks the amount");
+
+  await page.goto(`${base}/calendar`);
+  await page.getByTestId("calendar").waitFor();
+  check((await page.getByTestId("cal-mark").count()) >= 2, "money calendar marks paydays and due dates");
+  await page.getByTestId("cal-mark").first().click();
+  await page.getByTestId("cal-day").waitFor();
+  await shot("60-calendar");
+
+  await page.goto(`${base}/import`);
+  const rows = ["Date,Description,Amount"];
+  for (const d of ["2026-08-07", "2026-08-21", "2026-09-04", "2026-09-18"]) rows.push(`${d},ACME PAYROLL,1500.00`);
+  for (const d of ["2026-08-09", "2026-09-09", "2026-10-09"]) rows.push(`${d},SPOTIFY USA,-11.99`);
+  rows.push("2026-08-10,SAFEWAY 123,-80.00", "2026-08-11,UBER TRIP,-22.00");
+  await page.getByTestId("csv-input").fill(rows.join("\n"));
+  await page.getByTestId("csv-read").click();
+  await page.getByTestId("spend-summary").waitFor();
+  check(/Groceries/.test(await page.getByTestId("spend-summary").innerText()), "statement spending is grouped");
+  check((await page.getByTestId("recurring-row").count()) === 1 && /Spotify/.test(await page.getByTestId("recurring-row").innerText()), "repeating charges are found");
+  check(/every 2 weeks, about \$1,500/i.test(await page.getByTestId("income-found").innerText()), "pay frequency and amount are detected");
+  await shot("61-insights", true);
+
+  await page.goto(`${base}/money`);
+  await page.getByTestId("money-check").waitFor();
+  check(/\d+\s*\/ 100/.test(await page.getByTestId("money-check").innerText()), "money check shows a score out of 100");
+  await page.getByTestId("ef-saved").fill("2000");
+  await page.getByTestId("ef-save").click();
+  await page.getByTestId("ef-meter").waitFor();
+  check(/Covers [\d.]+ months/.test(await page.getByTestId("ef-meter").innerText()), "emergency fund measured in months");
+  await page.getByTestId("weekly-toggle").click();
+  check(/phone app/.test(await page.getByTestId("weekly-msg").innerText()), "weekly check-in explains it runs on the phone");
+  await page.getByTestId("money-check").scrollIntoViewIfNeeded();
+  await shot("62-money-check");
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("payoff-dates").waitFor();
+  check(/\d{4}-\d{2}/.test(await page.getByTestId("payoff-dates").innerText()), "debt payoff dates shown");
+
+  await page.goto(`${base}/paycheck`);
+  await page.getByTestId("split-pct").waitFor();
+  check((await page.getByText(/Goals \$[\d,.]+ · extra debt/).count()) >= 1, "leftover split per paycheck");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("bill-tips").first().click();
+  check((await page.getByTestId("bill-tips-box").count()) === 1, "bill-lowering tips per bill");
+
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText("Payday", { exact: true }).count()) >= 1, "My plan includes paydays");
+
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "Español" }).click();
+  await page.goto(`${base}/calendar`);
+  await page.getByText("Calendario de dinero").first().waitFor();
+  check(true, "money calendar renders in Spanish");
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "English" }).click();
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

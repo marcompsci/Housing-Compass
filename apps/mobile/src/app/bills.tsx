@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, billStatuses, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, BILL_SCRIPTS, billStatuses, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -67,6 +67,7 @@ function AddBill() {
 export default function Bills() {
   const { t } = useT();
   const r = useRenter();
+  const [tipsFor, setTipsFor] = useState<string | null>(null);
   const n = now();
   const month = today(n).slice(0, 7);
   const statuses = billStatuses(r.bills, r.billPaid, n);
@@ -94,7 +95,8 @@ export default function Bills() {
           {statuses.map((s) => {
             const paid = s.paidThisMonth;
             return (
-              <View key={s.bill.id} style={styles.row} testID="bill-row">
+              <View key={s.bill.id}>
+              <View style={styles.row} testID="bill-row">
                 <Pressable
                   onPress={() => r.toggleBillPaid(s.bill.id, month)}
                   accessibilityRole="checkbox"
@@ -120,9 +122,24 @@ export default function Bills() {
                   </Pressable>
                 ) : null}
                 {stateTag(s)}
+                <Pressable onPress={() => setTipsFor(tipsFor === s.bill.id ? null : s.bill.id)} accessibilityRole="button" accessibilityLabel={t("tips.for", { name: s.bill.name })} hitSlop={8} testID="bill-tips">
+                  <Icon name="bulb-outline" tint={tipsFor === s.bill.id ? color.brand : color.muted} />
+                </Pressable>
                 <Pressable onPress={() => r.removeBill(s.bill.id)} accessibilityRole="button" accessibilityLabel={t("bills.remove", { name: s.bill.name })} hitSlop={10}>
                   <Icon name="trash-outline" tint={color.muted} />
                 </Pressable>
+              </View>
+              {tipsFor === s.bill.id ? (
+                <View style={styles.tips} testID="bill-tips-box">
+                  <Text style={[type.small, { fontWeight: "700" }]}>{t("tips.title")}</Text>
+                  {BILL_SCRIPTS[s.bill.category].map((x) => (
+                    <Text key={x} style={type.small}>
+                      • {x}
+                    </Text>
+                  ))}
+                  <Button kind="ghost" icon="mail-outline" label={t("tips.letter")} onPress={() => router.push("/letters")} />
+                </View>
+              ) : null}
               </View>
             );
           })}
@@ -181,6 +198,7 @@ export default function Bills() {
 
 const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
+  tips: { padding: 10, borderRadius: 10, backgroundColor: color.neutralSoft, gap: 4, marginBottom: 6 },
   subBox: { padding: 10, borderRadius: 10, backgroundColor: color.brandSoft, gap: 4 },
   row: { flexDirection: "row", gap: 10, alignItems: "center", paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
 });

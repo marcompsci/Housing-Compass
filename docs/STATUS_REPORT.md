@@ -1,4 +1,36 @@
-# Status report — v0.18 (2026-11-19): 20 more phases — plan every paycheck, get out of debt, find money you're owed
+# Status report — v0.19 (2026-11-19): 20 more phases — know where you stand, ask for help, stay ahead of every due date
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Does this home fit? | On every listing: share of take-home pay, what's left after this rent and your bills, and months to save the move-in cost. | `listingFit`; `components/FitPanel.tsx` |
+| 2 | Save for this home | One tap creates a savings goal for the listing's move-in total, dated to its move-in date. | Listing detail |
+| 3 | Rent-reporting request letter | Asks the landlord to report on-time rent (Civil Code §1954.07). | `rentReportingRequest`; Money → Letters |
+| 4 | Payment-plan letter | For rent or a utility: amount owed split into up to 12 payments, start date, short reason; asks utilities about assistance. | `paymentPlanRequest` |
+| 5 | Ways to lower a bill | Tips for every bill category (CARE/FERA, LifeLine, low-income internet, rate and due-date requests). | `BILL_SCRIPTS`; Bills & budget |
+| 6 | Money calendar | Month grid with paydays, rent and bill due dates; tap a day for details; month total. | `monthCalendar`; `/calendar` |
+| 7 | Where the money went | Statement spending grouped into housing, bills, groceries, eating out, transport, shopping, cash/transfers. Not saved. | `spendingSummary`; Import |
+| 8 | Repeating charges | Finds monthly charges you aren't tracking (same merchant, ±10%, ~monthly) and adds them as bills. | `findRecurring` |
+| 9 | Pay detection | Detects pay frequency and amount from deposits and fills the paycheck plan. | `detectIncome` |
+| 10 | Emergency fund meter | Months of rent + bills covered and what reaches 3 months. | `emergencyFund`; Money |
+| 11 | Money check | 0–100 checklist score from your own records (clearly not a credit score). | `moneyCheck`; Money |
+| 12 | Next best step | The first unmet item links straight to the tool that fixes it. | Money |
+| 13 | Weekly check-in | Sunday 6pm local reminder. | `nextWeeklyCheckIn`; `lib/reminders.ts` |
+| 14 | Debt payoff dates | Calendar month each debt is paid off (avalanche). | `payoffDates`; Debt payoff |
+| 15 | Split what's left | Each paycheck's leftover split into goals / extra debt / buffer by a chosen preset. | `leftoverSplit`; Paycheck planner |
+| 16 | At-risk payments | My plan flags any rent or bill due on a day the forecast goes below $0. | `atRiskObligations` |
+| 17 | Paydays & goal dates in My plan | Paydays with set-aside amount and goal target dates appear in the 30-day list. | `moneyPlanItems` |
+| 18 | Backup & export | Emergency fund and split settings included in backups and "Download my data". | `RenterBackupSchema` |
+| 19 | Translations | 105 new strings in English, Spanish and Simplified Chinese. | `strings.ts` |
+| 20 | Tests | 14 new core tests; 16 new browser checks. | `test/v019.test.ts`, e2e |
+
+### Tests (all passing)
+- Core: 213 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 130 checks, screenshots 59–62
+
+---
+
+## Previous: v0.18 (2026-11-19): 20 more phases — plan every paycheck, get out of debt, find money you're owed
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

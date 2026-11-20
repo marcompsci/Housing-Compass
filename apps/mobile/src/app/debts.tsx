@@ -3,7 +3,8 @@
  * and compare avalanche (highest rate first, least interest) with snowball (smallest balance
  * first, quickest wins). Device-only. General information, not financial advice.
  */
-import { payoffPlan, type Debt } from "@housing-compass/core";
+import { payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
+import { now } from "../config";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, usd } from "../components/forms";
@@ -106,6 +107,14 @@ function DebtsScreen() {
               </View>
             ))}
           </View>
+          {av.feasible ? (
+            <View style={formStyles.card} testID="payoff-dates">
+              <Text style={type.h3}>{t("debt.datesTitle")}</Text>
+              {payoffDates(debts, av, now()).map((d) => (
+                <KV key={d.id} k={d.name} v={d.month ?? "—"} />
+              ))}
+            </View>
+          ) : null}
           {av.feasible && sn.feasible && sn.totalInterestCents > av.totalInterestCents ? <Tag label={t("debt.saves", { amount: usd(sn.totalInterestCents - av.totalInterestCents) })} tone="good" /> : null}
           {!av.feasible ? <Text style={[type.small, { color: color.danger, fontWeight: "700" }]}>{t("debt.infeasible")}</Text> : null}
         </Section>

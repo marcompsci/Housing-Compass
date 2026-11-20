@@ -4,7 +4,7 @@
  * when the user turns reminders on. On the web there are no scheduled notifications; the
  * "My plan" tab shows the same items instead.
  */
-import { billReminders, billStatuses, paycheckPlan, reminderSchedule, upcomingObligations, type ReminderPlan } from "@housing-compass/core";
+import { billReminders, billStatuses, nextWeeklyCheckIn, paycheckPlan, reminderSchedule, upcomingObligations, type ReminderPlan } from "@housing-compass/core";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -61,7 +61,8 @@ export function currentReminderPlans(): ReminderPlan[] {
         payday.push({ id: `pay:${b.payday}`, at: new Date(at).toISOString(), title: "Payday: set money aside", body: `Set aside $${(b.setAsideCents / 100).toLocaleString("en-US")} from this check for ${b.covers.map((c) => c.name).join(", ")}.` });
     }
   }
-  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset), ...payday].sort((a, b) => a.at.localeCompare(b.at));
+  const weekly: ReminderPlan[] = r.weeklyCheckIn ? [{ id: "weekly-check-in", at: nextWeeklyCheckIn(n, offset), title: "Weekly money check-in", body: "Two minutes: mark what you paid, check what's due this week, and see your money check." }] : [];
+  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset), ...payday, ...weekly].sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /** Keeps the scheduled reminders in step with rent, payments and tours. Mounted once in the root layout. */
@@ -73,6 +74,7 @@ export function useReminderSync() {
   const bills = useRenter((s) => s.bills);
   const billPaid = useRenter((s) => s.billPaid);
   const pay = useRenter((s) => s.pay);
+  const weekly = useRenter((s) => s.weeklyCheckIn);
   useEffect(() => {
     if (!remindersSupported) return;
     const id = setTimeout(() => {
@@ -81,5 +83,5 @@ export function useReminderSync() {
       );
     }, 500);
     return () => clearTimeout(id);
-  }, [on, setup, payments, threads, bills, billPaid, pay]);
+  }, [on, setup, payments, threads, bills, billPaid, pay, weekly]);
 }

@@ -456,6 +456,8 @@ export const RenterBackupSchema = z.object({
     goals: z.array(z.object({ id: shortText(64), name: shortText(60), targetCents: cents, savedCents: cents, targetDate: day.nullable() })).max(30),
     unusedSubs: z.array(shortText(64)).max(100),
     creditDone: z.array(z.enum(CREDIT_CHECKLIST)).max(20),
+    emergencyCents: cents.nullable().optional(),
+    splitPct: z.object({ goals: z.number().min(0).max(100), debt: z.number().min(0).max(100) }).optional(),
   }),
 });
 export type RenterBackup = z.infer<typeof RenterBackupSchema>;

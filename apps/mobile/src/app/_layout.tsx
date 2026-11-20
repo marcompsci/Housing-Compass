@@ -64,6 +64,8 @@ export default function RootLayout() {
         <Stack.Screen name="split" options={{ title: "Split with roommates" }} />
         <Stack.Screen name="backup" options={{ title: "Backup & restore" }} />
         <Stack.Screen name="setup" options={{ title: "Quick setup" }} />
+        <Stack.Screen name="calendar" options={{ title: "Money calendar" }} />
+        <Stack.Screen name="letters" options={{ title: "Letters" }} />
       </Stack>
     </SafeAreaProvider>
   );

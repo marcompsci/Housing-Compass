@@ -15,6 +15,7 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { DemoTag, TrustPanel } from "../../components/TrustBadge";
 import { AffordabilityPanel } from "../../components/AffordabilityPanel";
+import { FitPanel } from "../../components/FitPanel";
 import { PriceHistoryPanel, ResponseMetrics, ShareListingButton, TravelPanel } from "../../components/ListingExtras";
 import { Banner, Button, Icon, KV, Section, Tag } from "../../components/ui";
 import { now } from "../../config";
@@ -163,6 +164,8 @@ export default function ListingDetail() {
         <PriceHistoryPanel listing={l} />
 
         <AffordabilityPanel listing={l} />
+
+        <FitPanel listing={l} />
 
         <Section title={t("ld.home")}>
           <KV k={t("ld.type")} v={homeType(l, t)} />

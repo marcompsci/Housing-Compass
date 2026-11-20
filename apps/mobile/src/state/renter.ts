@@ -45,6 +45,12 @@ interface RenterState {
   unusedSubs: string[];
   creditDone: CreditStep[];
   setupDone: boolean;
+  emergencyCents: number | null;
+  splitPct: { goals: number; debt: number };
+  weeklyCheckIn: boolean;
+  setEmergency(c: number | null): void;
+  setSplitPct(p: { goals: number; debt: number }): void;
+  setWeeklyCheckIn(on: boolean): void;
   setPay(p: PaySetup | null): void;
   setStartBalance(c: number | null): void;
   addDebt(d: Omit<Debt, "id">): void;
@@ -79,7 +85,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -123,6 +129,9 @@ export const useRenter = create<RenterState>()(
       toggleUnusedSub: (id) => set({ unusedSubs: get().unusedSubs.includes(id) ? get().unusedSubs.filter((x) => x !== id) : [...get().unusedSubs, id] }),
       toggleCreditStep: (st) => set({ creditDone: get().creditDone.includes(st) ? get().creditDone.filter((x) => x !== st) : [...get().creditDone, st] }),
       setSetupDone: (setupDone) => set({ setupDone }),
+      setEmergency: (emergencyCents) => set({ emergencyCents }),
+      setSplitPct: (splitPct) => set({ splitPct }),
+      setWeeklyCheckIn: (weeklyCheckIn) => set({ weeklyCheckIn }),
       markBillPaid: (id, month) => {
         const cur = get().billPaid[id] ?? [];
         if (!cur.includes(month)) set({ billPaid: { ...get().billPaid, [id]: [...cur, month].slice(-36) } });
@@ -140,6 +149,8 @@ export const useRenter = create<RenterState>()(
           goals: b.data.goals,
           unusedSubs: b.data.unusedSubs,
           creditDone: b.data.creditDone,
+          emergencyCents: b.data.emergencyCents ?? null,
+          splitPct: b.data.splitPct ?? { goals: 50, debt: 30 },
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),
