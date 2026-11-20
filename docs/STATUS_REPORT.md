@@ -1,4 +1,36 @@
-# Status report — v0.22 (2026-11-20): 20 more phases — decide before you spend, stay under a weekly limit, watch your credit trend
+# Status report — v0.23 (2026-11-20): 20 more phases — build credit and net worth
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Card limits | Optional credit limit on each card. | `Debt.limitCents`; Debt payoff |
+| 2 | Per-card use | Balance as % of each limit. | `core/grow.ts` `cardUtilization` |
+| 3 | Pay to target | What to pay on each card to get under 30% and 10%. | `cardUtilization` |
+| 4 | Overall card use | Total % across cards with a note on statement balances. | Debt payoff |
+| 5 | Proof of payment | Confirmation number per bill paid this month. | `paidThisMonth`, `billNotes`; Bills & budget |
+| 6 | Autopay check | Bills not on autopay, cards and loans first. | `autopayChecklist` |
+| 7 | Late-fee waiver letter | One-time courtesy request, also usable as a phone script. | `lateFeeWaiverLetter`; Letters |
+| 8 | Net worth now | Cash entered + emergency fund + goal savings + other − debts. | `netWorthNow`; `/net-worth` |
+| 9 | Other assets | User's own estimate for anything else they own. | `/net-worth` |
+| 10 | Monthly history | One snapshot per month, change since last month, bars. | `upsertSnapshot`, `netWorthHistory` |
+| 11 | Spend categories | Food, coffee, gas, fun, shopping, other. | `Spend.category`; Weekly spending |
+| 12 | Month recap | Totals by category vs last month, days with spending. | `monthRecap` |
+| 13 | Spending export | CSV of every logged spend. | `spendsCsv` |
+| 14 | 52-week challenge | Week n saves n × step; check weeks off; total and catch-up count. | `challengeStatus`; `/challenge` |
+| 15 | Challenge options | Step $0.50–$5 and big-weeks-first mode. | `/challenge` |
+| 16 | My plan | This week's challenge amount and a monthly net-worth update. | `growPlanItems` |
+| 17 | Setup progress | 9-step money setup with a "Next" button until complete. | `setupProgress`; Money hub |
+| 18 | Hub links | Net worth and challenge in the money tools. | Money hub |
+| 19 | Backup, privacy, translations | New data in backups (strict schema), export, clear, Face ID lock; 79 new strings in en/es/zh. | `RenterBackupSchema`, `strings.ts` |
+| 20 | Tests | 12 new core tests; 11 new browser checks. | `test/v023.test.ts`, e2e |
+
+### Tests (all passing)
+- Core: 267 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 181 checks, screenshots 78–81
+
+---
+
+## Previous: v0.22 (2026-11-20): 20 more phases — decide before you spend, stay under a weekly limit, watch your credit trend
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

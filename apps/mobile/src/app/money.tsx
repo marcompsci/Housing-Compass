@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { allPaidStreak, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { allPaidStreak, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -79,6 +79,8 @@ function MoneyScreen() {
     { icon: "file-tray-stacked-outline", label: t("yr.title"), sub: r.yearly.length ? t("yr.hubSub", { amount: usd(yearlyPlan(r.yearly, now()).monthlyTotalCents) }) : t("yr.sub"), href: "/yearly", testID: "tool-yearly" },
     { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
     { icon: "cart-outline", label: t("sp.title"), sub: t("sp.sub"), href: "/spending", testID: "tool-spending" },
+    { icon: "trending-up-outline", label: t("nw.title"), sub: t("nw.sub"), href: "/net-worth", testID: "tool-net-worth" },
+    { icon: "calendar-number-outline", label: t("ch.title"), sub: r.challenge ? t("ch.hubSub", { n: r.challenge.done.length }) : t("ch.sub"), href: "/challenge", testID: "tool-challenge" },
     { icon: "help-circle-outline", label: t("aff.title"), sub: t("aff.sub"), href: "/afford", testID: "tool-afford" },
     { icon: "sparkles-outline", label: t("wf.title"), sub: t("wf.sub"), href: "/windfall", testID: "tool-windfall" },
     { icon: "analytics-outline", label: t("sc.title"), sub: t("sc.sub"), href: "/scores", testID: "tool-scores" },
@@ -96,6 +98,20 @@ function MoneyScreen() {
         </Banner>
       ) : null}
       {!r.setupDone && !r.pay ? <Button icon="rocket-outline" label={t("money.setupStart")} onPress={() => router.push("/setup")} testID="setup-start" /> : null}
+
+      {(() => {
+        const sp = setupProgress({ pay: !!r.pay, balance: r.startBalanceCents !== null, rent: !!r.rentSetup, bills: r.bills.length, debts: r.debts.length, goals: r.goals.length, emergency: r.emergencyCents !== null, weeklyLimit: r.weeklyLimitCents !== null, remindersOn: r.remindersOn });
+        if (sp.done === sp.total) return null;
+        return (
+          <View style={formStyles.card} testID="setup-progress">
+            <Text style={type.h3}>{t("sup.title", { done: sp.done, total: sp.total })}</Text>
+            <View style={{ height: 8, borderRadius: 8, backgroundColor: color.neutralSoft, overflow: "hidden" }}>
+              <View style={{ height: "100%", width: `${sp.pct}%`, backgroundColor: color.brand }} />
+            </View>
+            {sp.next ? <Button kind="secondary" icon="arrow-forward-circle-outline" label={t("sup.next", { step: t(`sup.s.${sp.next.id}`) })} onPress={() => router.push(sp.next!.href as never)} testID="setup-next" /> : null}
+          </View>
+        );
+      })()}
 
       <Section title={t("today.title")}>
         <View style={[styles.tile, { flexBasis: "auto" }, sts?.shortCents ? { backgroundColor: color.dangerSoft } : { backgroundColor: color.verifiedSoft }]} testID="safe-to-spend">

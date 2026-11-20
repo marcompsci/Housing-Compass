@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type Contribution, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -64,6 +64,16 @@ interface RenterState {
   weeklyLimitCents: number | null;
   spends: Spend[];
   scores: ScoreEntry[];
+  billNotes: Record<string, string>;
+  netWorth: NetWorthSnap[];
+  otherAssetsCents: number | null;
+  challenge: Challenge | null;
+  setBillNote(key: string, note: string): void;
+  saveNetWorth(s: NetWorthSnap): void;
+  setOtherAssets(c: number | null): void;
+  startChallenge(c: Omit<Challenge, "done">): void;
+  toggleChallengeWeek(week: number): void;
+  endChallenge(): void;
   setWeeklyLimit(c: number | null): void;
   addSpend(x: Omit<Spend, "id">): void;
   removeSpend(id: string): void;
@@ -133,7 +143,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [] };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -171,6 +181,21 @@ export const useRenter = create<RenterState>()(
       setPay: (pay) => set({ pay }),
       setStartBalance: (startBalanceCents) => set({ startBalanceCents }),
       addDebt: (d) => set({ debts: [...get().debts, { ...d, startBalanceCents: d.startBalanceCents ?? d.balanceCents, id: uuid() }] }),
+      setBillNote: (key, note) => {
+        const n = { ...get().billNotes };
+        if (note.trim()) n[key] = note.trim().slice(0, 80);
+        else delete n[key];
+        set({ billNotes: n });
+      },
+      saveNetWorth: (s) => set({ netWorth: upsertSnapshot(get().netWorth, s) }),
+      setOtherAssets: (otherAssetsCents) => set({ otherAssetsCents }),
+      startChallenge: (c) => set({ challenge: { ...c, done: [] } }),
+      toggleChallengeWeek: (w) => {
+        const c = get().challenge;
+        if (!c) return;
+        set({ challenge: { ...c, done: c.done.includes(w) ? c.done.filter((x) => x !== w) : [...c.done, w].sort((a, b) => a - b) } });
+      },
+      endChallenge: () => set({ challenge: null }),
       setWeeklyLimit: (weeklyLimitCents) => set({ weeklyLimitCents }),
       addSpend: (x) => set({ spends: [{ ...x, id: uuid() }, ...get().spends].slice(0, 5000) }),
       removeSpend: (id) => set({ spends: get().spends.filter((x) => x.id !== id) }),
@@ -251,6 +276,10 @@ export const useRenter = create<RenterState>()(
           weeklyLimitCents: b.data.weeklyLimitCents ?? null,
           spends: b.data.spends ?? [],
           scores: b.data.scores ?? [],
+          billNotes: b.data.billNotes ?? {},
+          netWorth: b.data.netWorth ?? [],
+          otherAssetsCents: b.data.otherAssetsCents ?? null,
+          challenge: b.data.challenge ?? null,
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

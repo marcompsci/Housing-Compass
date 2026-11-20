@@ -2,7 +2,7 @@
  * Weekly spending: set a limit for day-to-day spending, log what you spend in a tap, see what's
  * left this week and how many weeks in a row you stayed under. Device-only.
  */
-import { underLimitStreak, weeklyReview, weekSpending } from "@housing-compass/core";
+import { monthRecap, SPEND_CATEGORIES, spendsCsv, underLimitStreak, weeklyReview, weekSpending, type SpendCategory } from "@housing-compass/core";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today, usd } from "../components/forms";
@@ -32,7 +32,8 @@ function Spending() {
   const [limit, setLimit] = useState(r.weeklyLimitCents ? String(r.weeklyLimitCents / 100) : "");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  const quick = [t("sp.q.food"), t("sp.q.coffee"), t("sp.q.gas"), t("sp.q.fun")];
+  const [cat, setCat] = useState<SpendCategory>("food");
+  const recap = monthRecap(r.spends, td.slice(0, 7));
   const pct = r.weeklyLimitCents ? Math.min(100, Math.round((w.spentCents / r.weeklyLimitCents) * 100)) : 0;
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="spending">
@@ -57,8 +58,8 @@ function Spending() {
 
       <Section title={t("sp.log")}>
         <View style={formStyles.row}>
-          {quick.map((q) => (
-            <Chip key={q} label={q} selected={note === q} onPress={() => setNote(q)} />
+          {SPEND_CATEGORIES.map((c) => (
+            <Chip key={c} label={t(`spc.${c}`)} selected={cat === c} onPress={() => setCat(c)} />
           ))}
         </View>
         <View style={formStyles.row}>
@@ -76,14 +77,14 @@ function Spending() {
           onPress={() => {
             const c = toCents(amount);
             if (!(c > 0)) return;
-            r.addSpend({ date: td, amountCents: c, note: note.trim().slice(0, 60) });
+            r.addSpend({ date: td, amountCents: c, note: note.trim().slice(0, 60), category: cat });
             setAmount("");
           }}
         />
         {r.spends.filter((s) => s.date >= w.weekStart).slice(0, 30).map((s) => (
           <View key={s.id} style={styles.row} testID="sp-row">
             <Text style={[type.small, { flex: 1 }]}>
-              {s.date}
+              {s.date} · {t(`spc.${s.category ?? "other"}`)}
               {s.note ? ` · ${s.note}` : ""}
             </Text>
             <Text style={[type.small, { fontWeight: "700" }]}>{usd(s.amountCents)}</Text>
@@ -110,6 +111,22 @@ function Spending() {
         </Text>
         <Button kind="secondary" icon="share-outline" label={t("yir.share")} onPress={() => void saveAndShare(`week-${review.weekStart}.txt`, review.text, "text/plain", "public.plain-text")} />
       </Section>
+      {recap.totalCents || recap.lastTotalCents ? (
+        <Section title={t("rc.title", { month: recap.month })}>
+          <View testID="sp-recap">
+            <Text style={[type.body, { fontWeight: "800" }]}>{t("rc.total", { amount: usd(recap.totalCents), days: recap.spendDays })}</Text>
+            {recap.lastTotalCents ? <Text style={[type.small, { color: recap.changeCents > 0 ? color.danger : color.verified }]}>{t(recap.changeCents > 0 ? "rc.more" : "rc.less", { amount: usd(Math.abs(recap.changeCents)) })}</Text> : null}
+            {recap.rows.map((x) => (
+              <View key={x.category} style={styles.row}>
+                <Text style={[type.small, { flex: 1 }]}>{t(`spc.${x.category}`)}</Text>
+                <Text style={[type.tiny, { color: color.muted }]}>{x.lastCents ? t("rc.last", { amount: usd(x.lastCents) }) : ""}</Text>
+                <Text style={[type.small, { fontWeight: "700", width: 80, textAlign: "right" }]}>{usd(x.cents)}</Text>
+              </View>
+            ))}
+          </View>
+          <Button kind="secondary" icon="download-outline" label={t("rc.export")} onPress={() => void saveAndShare(`spending-${td}.csv`, spendsCsv(r.spends), "text/csv", "public.comma-separated-values-text")} testID="sp-export" />
+        </Section>
+      ) : null}
       <Text style={type.tiny}>{t("rent.deviceOnly")}</Text>
     </ScrollView>
   );

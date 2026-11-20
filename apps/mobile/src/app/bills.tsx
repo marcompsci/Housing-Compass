@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, BILL_SCRIPTS, billStatuses, dueDateSuggestions, hoursToCover, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, BILL_SCRIPTS, autopayChecklist, billStatuses, dueDateSuggestions, hoursToCover, noteKey, paidThisMonth, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -16,6 +16,25 @@ import { useRenter } from "../state/renter";
 import { color, space, type } from "../theme";
 
 const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
+
+function ProofRow({ id, month, name, amount, note }: { id: string; month: string; name: string; amount: string; note: string }) {
+  const { t } = useT();
+  const setNote = useRenter((s) => s.setBillNote);
+  const [v, setV] = useState(note);
+  return (
+    <View style={{ gap: 4 }} testID="proof-row">
+      <Text style={[type.small, { fontWeight: "700" }]}>
+        {name} · {amount}
+      </Text>
+      <View style={formStyles.row}>
+        <View style={{ flex: 1, minWidth: 160 }}>
+          <Field label={t("pp.conf")} value={v} onChangeText={setV} placeholder={t("pp.confPh")} testID="proof-input" />
+        </View>
+        <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => setNote(noteKey(id, month), v)} testID="proof-save" />
+      </View>
+    </View>
+  );
+}
 
 function AddBill() {
   const { t } = useT();
@@ -228,6 +247,36 @@ export default function Bills() {
             </View>
           ) : null}
         </Section>
+
+        {(() => {
+          const month = today(now()).slice(0, 7);
+          const paid = paidThisMonth(r.bills, r.billPaid, r.billNotes, month);
+          if (!paid.length) return null;
+          return (
+            <Section title={t("pp.title")}>
+              <Text style={type.small}>{t("pp.body")}</Text>
+              {paid.map((p) => (
+                <ProofRow key={p.id} id={p.id} month={month} name={p.name} amount={usd(p.amountCents)} note={p.note} />
+              ))}
+            </Section>
+          );
+        })()}
+
+        {(() => {
+          const a = autopayChecklist(r.bills);
+          if (!a.off.length) return null;
+          return (
+            <Section title={t("ap.title", { on: a.onCount, total: a.total })}>
+              <Text style={type.small}>{t("ap.body")}</Text>
+              {a.off.slice(0, 8).map((b) => (
+                <View key={b.id} style={formStyles.row} testID="autopay-off">
+                  <Icon name="square-outline" size={18} tint={color.muted} />
+                  <Text style={[type.small, { flex: 1 }]}>{t("ap.line", { name: b.name, day: b.dueDay })}</Text>
+                </View>
+              ))}
+            </Section>
+          );
+        })()}
 
         <Button kind="ghost" icon="trending-up-outline" label={t("inc.link")} onPress={() => router.push("/rent-increase")} />
         <Text style={type.tiny}>{t("rent.deviceOnly")}</Text>

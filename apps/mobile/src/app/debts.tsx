@@ -3,7 +3,7 @@
  * and compare avalanche (highest rate first, least interest) with snowball (smallest balance
  * first, quickest wins). Device-only. General information, not financial advice.
  */
-import { debtProgress, extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
+import { cardUtilization, debtProgress, extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
 import { now } from "../config";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -54,6 +54,25 @@ function DebtsScreen() {
           </View>
           {debtProgress(debts).paidOff ? <Tag label={t("dp.paidOff", { n: debtProgress(debts).paidOff })} tone="good" /> : null}
         </View>
+      ) : null}
+      {cardUtilization(debts).rows.length ? (
+        <Section title={t("cu.title")}>
+          {(() => {
+            const u = cardUtilization(debts);
+            return (
+              <View style={{ gap: 6 }} testID="card-util">
+                <Text style={[type.body, { fontWeight: "800", color: (u.overallPct ?? 0) < 30 ? color.verified : color.danger }]}>{t("cu.overall", { pct: u.overallPct ?? 0 })}</Text>
+                {u.rows.map((c) => (
+                  <View key={c.id} style={{ gap: 2 }}>
+                    <Text style={type.small}>{t("cu.card", { name: c.name, pct: c.pct, bal: usd(c.balanceCents), limit: usd(c.limitCents) })}</Text>
+                    <Text style={type.tiny}>{c.payTo30Cents ? t("cu.pay30", { amount: usd(c.payTo30Cents) }) : t("cu.under30")}{c.payTo10Cents ? ` · ${t("cu.pay10", { amount: usd(c.payTo10Cents) })}` : ""}</Text>
+                  </View>
+                ))}
+                <Text style={type.tiny}>{t("cu.note")}</Text>
+              </View>
+            );
+          })()}
+        </Section>
       ) : null}
       <Section title={t("debt.list")}>
         {debts.length === 0 ? <Text style={type.small}>{t("debt.none")}</Text> : null}

@@ -43,6 +43,13 @@
 ## Done in v0.22
 - #34 report reminder, #35 dispute letter, #36 quick balance update; plus afford check, weekly spending, windfall, score journal, bill promo watch, debt progress
 
+## Done in v0.23
+- Card use per card, proof of payment, autopay check, late-fee letter, net worth, spending categories and recap, 52-week challenge, setup progress
+
+## Next ideas (after v0.23)
+40. Privacy mode that hides amounts on screen
+41. Charts for spending by week (needs a small chart component)
+
 ## Next ideas (after v0.22)
 37. Home-screen widget: safe to spend and next due date (needs a native widget extension)
 38. Pick the bank CSV file directly (document picker)

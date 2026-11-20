@@ -72,6 +72,8 @@ export default function RootLayout() {
         <Stack.Screen name="spending" options={{ title: "Weekly spending" }} />
         <Stack.Screen name="windfall" options={{ title: "Windfall planner" }} />
         <Stack.Screen name="scores" options={{ title: "Score journal" }} />
+        <Stack.Screen name="net-worth" options={{ title: "Net worth" }} />
+        <Stack.Screen name="challenge" options={{ title: "52-week challenge" }} />
         <Stack.Screen name="split" options={{ title: "Split with roommates" }} />
         <Stack.Screen name="backup" options={{ title: "Backup & restore" }} />
         <Stack.Screen name="setup" options={{ title: "Quick setup" }} />

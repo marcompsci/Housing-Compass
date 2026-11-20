@@ -1034,6 +1034,69 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await shot("77-debt-progress");
 }
 
+// ── v0.23: setup progress, net worth, 52-week challenge, card use, proof of payment, autopay check, late-fee letter, spending categories
+{
+  await page.goto(`${base}/money`);
+  await page.getByTestId("safe-to-spend").waitFor();
+  check((await page.getByTestId("setup-progress").count()) === 0 || /Money setup: \d of 9 done/.test(await page.getByTestId("setup-progress").innerText()), "money setup progress shown until complete");
+  check((await page.getByTestId("tool-net-worth").count()) === 1 && (await page.getByTestId("tool-challenge").count()) === 1, "money hub links net worth and the challenge");
+
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText("Update your net worth for this month").count()) === 1, "monthly net worth update in My plan");
+  await page.goto(`${base}/net-worth`);
+  await page.getByTestId("nw-other").fill("2500");
+  await page.getByTestId("nw-other-save").click();
+  check(/\$2,500/.test(await page.getByTestId("nw-now").innerText()), "net worth includes other assets");
+  await page.getByTestId("nw-save").click();
+  await page.getByTestId("nw-row").waitFor();
+  check((await page.getByTestId("nw-row").count()) === 1, "net worth snapshot saved for the month");
+  await shot("78-net-worth");
+
+  await page.goto(`${base}/challenge`);
+  await page.getByTestId("ch-start").click();
+  await page.getByTestId("ch-status").waitFor();
+  check(/Week 1 of 52/.test(await page.getByTestId("ch-status").innerText()) && /Save \$1 this week/.test(await page.getByTestId("ch-status").innerText()), "52-week challenge starts at week 1");
+  await page.getByTestId("ch-week-1").click();
+  check(/\$1 \/ \$1,378/.test(await page.getByTestId("ch-status").innerText()), "challenge weeks check off");
+  await shot("79-challenge");
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-timing-edit").first().click();
+  await page.getByTestId("debt-limit").fill("1000");
+  await page.getByTestId("debt-timing-save").click();
+  await page.getByTestId("card-util").waitFor();
+  check(/Overall: \d+% of your limits in use/.test(await page.getByTestId("card-util").innerText()), "card use and pay-to-target shown");
+  await page.getByTestId("card-util").scrollIntoViewIfNeeded();
+  await shot("80-card-use");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("bill-add").waitFor();
+  if (await page.getByTestId("proof-row").count()) {
+    await page.getByTestId("proof-input").first().fill("#A1B2C3");
+    await page.getByTestId("proof-save").first().click();
+    await page.reload();
+    await page.getByTestId("proof-input").first().waitFor();
+    check((await page.getByTestId("proof-input").first().inputValue()) === "#A1B2C3", "proof of payment saved");
+  }
+  check((await page.getByTestId("autopay-off").count()) >= 1, "autopay checklist lists bills not on autopay");
+
+  await page.goto(`${base}/letters`);
+  await page.getByTestId("lf-company").fill("PG&E");
+  await page.getByTestId("lf-fee").fill("10");
+  await page.getByTestId("let-lf").click();
+  check((await page.getByTestId("lf-company").count()) === 1, "late fee waiver letter can be made");
+
+  await page.goto(`${base}/spending`);
+  await page.getByRole("button", { name: "Shopping" }).click();
+  await page.getByTestId("sp-amount").fill("20");
+  await page.getByTestId("sp-add").click();
+  await page.getByTestId("sp-recap").waitFor();
+  check(/Shopping/.test(await page.getByTestId("sp-recap").innerText()), "spending recap by category");
+  await page.getByTestId("sp-recap").scrollIntoViewIfNeeded();
+  await shot("81-spending-recap");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

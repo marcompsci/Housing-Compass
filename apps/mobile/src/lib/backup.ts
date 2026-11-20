@@ -40,6 +40,10 @@ export function makeBackup(now: Date): RenterBackup {
       weeklyLimitCents: r.weeklyLimitCents,
       spends: r.spends,
       scores: r.scores,
+      billNotes: r.billNotes,
+      netWorth: r.netWorth,
+      otherAssetsCents: r.otherAssetsCents,
+      challenge: r.challenge,
     },
   };
 }

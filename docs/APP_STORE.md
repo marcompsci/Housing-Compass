@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.22). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.23). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -52,6 +52,8 @@ KNOW WHAT'S SAFE TO SPEND
 • Ask "Can I afford this?" before you buy — yes, tight, wait until payday, or not now.
 • Set a weekly spending limit, log spends in a tap and keep an under-limit streak.
 • Split a tax refund or bonus wisely with the windfall planner.
+• Track your net worth month by month, and take the 52-week savings challenge.
+• See spending by category compared with last month.
 • See each bill in hours of work.
 
 EARN MORE AND KEEP MORE
@@ -69,7 +71,8 @@ TRACK YOUR CREDIT
 • Track hard inquiries and disputes, with the bureau's response date.
 • Pay before your card's statement closes, and clear a promo rate before it ends.
 • Keep a journal of the scores you see in your bank or card app (the app never estimates a score).
-• Make a credit report dispute letter.
+• Make a credit report dispute letter or a late-fee waiver request.
+• See each card's use and how much to pay to get under 30% or 10%.
 • Ask your landlord to report on-time rent, or ask for a payment plan, with ready-made letters.
 
 PROTECT YOUR DEPOSIT

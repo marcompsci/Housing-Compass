@@ -18,6 +18,7 @@ export function DebtTiming({ debt }: { debt: Debt }) {
   const [day, setDay] = useState(debt.statementDay ? String(debt.statementDay) : "");
   const [promo, setPromo] = useState(debt.promoEnds ?? "");
   const [bal, setBal] = useState(String(debt.balanceCents / 100));
+  const [limit, setLimit] = useState(debt.limitCents ? String(debt.limitCents / 100) : "");
   const [err, setErr] = useState<string | null>(null);
   const td = today(now());
   const st = statementTiming(debt, td);
@@ -36,7 +37,14 @@ export function DebtTiming({ debt }: { debt: Debt }) {
       ) : null}
       {open ? (
         <View style={formStyles.card}>
-          <Field label={t("dp.balance")} value={bal} onChangeText={setBal} keyboardType="decimal-pad" testID="debt-balance-update" />
+          <View style={formStyles.row}>
+            <View style={{ flex: 1, minWidth: 120 }}>
+              <Field label={t("dp.balance")} value={bal} onChangeText={setBal} keyboardType="decimal-pad" testID="debt-balance-update" />
+            </View>
+            <View style={{ flex: 1, minWidth: 120 }}>
+              <Field label={t("cu.limit")} value={limit} onChangeText={setLimit} keyboardType="decimal-pad" testID="debt-limit" />
+            </View>
+          </View>
           <View style={formStyles.row}>
             <View style={{ flex: 1, minWidth: 120 }}>
               <Field label={t("card.statementDay")} value={day} onChangeText={setDay} keyboardType="number-pad" testID="debt-stmt-day" />
@@ -55,7 +63,9 @@ export function DebtTiming({ debt }: { debt: Debt }) {
               const b = toCents(bal);
               if (!(b >= 0)) return setErr(t("card.err"));
               if ((day.trim() && !(Number.isInteger(d) && d >= 1 && d <= 31)) || (promo.trim() && !isDate(promo.trim()))) return setErr(t("card.err"));
-              update(debt.id, { balanceCents: b, startBalanceCents: Math.max(debt.startBalanceCents ?? debt.balanceCents, b), statementDay: day.trim() ? d : undefined, promoEnds: promo.trim() || undefined });
+              const l = limit.trim() ? toCents(limit) : 0;
+              if (!(l >= 0)) return setErr(t("card.err"));
+              update(debt.id, { limitCents: l > 0 ? l : undefined, balanceCents: b, startBalanceCents: Math.max(debt.startBalanceCents ?? debt.balanceCents, b), statementDay: day.trim() ? d : undefined, promoEnds: promo.trim() || undefined });
               setErr(null);
               setOpen(false);
             }}

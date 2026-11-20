@@ -3,7 +3,7 @@
  * or ask a landlord or utility for a payment plan. Made on the phone; you send it yourself.
  * General information, not legal advice.
  */
-import { BUREAUS, disputeLetter, paymentPlanRequest, rentReportingRequest, type Bureau } from "@housing-compass/core";
+import { BUREAUS, disputeLetter, lateFeeWaiverLetter, paymentPlanRequest, rentReportingRequest, type Bureau } from "@housing-compass/core";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today } from "../components/forms";
@@ -35,6 +35,10 @@ export default function Letters() {
   const [item, setItem] = useState("");
   const [why, setWhy] = useState("");
   const [dlErr, setDlErr] = useState<string | null>(null);
+  const [lfCo, setLfCo] = useState("");
+  const [lfFee, setLfFee] = useState("");
+  const [lfPaid, setLfPaid] = useState("");
+  const [lfWhy, setLfWhy] = useState("");
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="letters">
@@ -82,6 +86,22 @@ export default function Letters() {
         />
       </Section>
       <Text style={type.tiny}>{t("let.footer")}</Text>
+      <Section title={t("lf.title")}>
+        <Text style={type.small}>{t("lf.body")}</Text>
+        <Field label={t("win.company")} value={lfCo} onChangeText={setLfCo} testID="lf-company" />
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 120 }}>
+            <Field label={t("lf.fee")} value={lfFee} onChangeText={setLfFee} keyboardType="decimal-pad" testID="lf-fee" />
+          </View>
+          <View style={{ flex: 1, minWidth: 140 }}>
+            <Field label={t("lf.paidOn")} value={lfPaid} onChangeText={setLfPaid} autoCapitalize="none" placeholder={d} />
+          </View>
+        </View>
+        <Field label={t("lf.why")} value={lfWhy} onChangeText={setLfWhy} placeholder={t("lf.whyPh")} />
+        <Button icon="document-text-outline" label={t("let.make")} testID="let-lf" onPress={() => void saveAndShare(`late-fee-waiver-${d}.txt`, lateFeeWaiverLetter({ name: name.trim(), company: lfCo.trim(), account: "", feeCents: lfFee.trim() ? toCents(lfFee) : 0, paidOn: lfPaid.trim(), reason: lfWhy.trim(), today: d }), "text/plain", "public.plain-text")} />
+        <Text style={type.tiny}>{t("lf.note")}</Text>
+      </Section>
+
       <Section title={t("dl.title")}>
         <Text style={type.small}>{t("dl.body")}</Text>
         <View style={formStyles.row}>

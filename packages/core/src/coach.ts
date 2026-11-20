@@ -38,11 +38,13 @@ export function canAfford(i: { priceCents: number; safeCents: number; series: Fo
 }
 
 // ───────── Weekly spending limit ─────────
+export type SpendCategory = "food" | "coffee" | "gas" | "fun" | "shopping" | "other";
 export interface Spend {
   id: string;
   date: string;
   amountCents: number;
   note: string;
+  category?: SpendCategory;
 }
 /** Weeks start on Monday. */
 export function weekStart(date: string): string {
