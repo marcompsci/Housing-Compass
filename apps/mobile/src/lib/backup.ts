@@ -24,6 +24,11 @@ export function makeBackup(now: Date): RenterBackup {
       creditDone: r.creditDone,
       emergencyCents: r.emergencyCents,
       splitPct: r.splitPct,
+      sideIncome: r.sideIncome,
+      mileage: r.mileage,
+      sideSetAsidePct: r.sideSetAsidePct,
+      yearly: r.yearly,
+      contribs: r.contribs,
     },
   };
 }

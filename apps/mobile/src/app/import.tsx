@@ -3,7 +3,7 @@
  * suggest which rows are rent or bill payments, and you confirm each one. No bank login, and
  * the statement is never stored or uploaded — only the payments you confirm are recorded.
  */
-import { detectIncome, findRecurring, matchTransactions, parseBankCsv, spendingSummary, type BankTxn, type TxnMatch } from "@housing-compass/core";
+import { billChanges, detectIncome, findRecurring, matchTransactions, parseBankCsv, spendingSummary, type BankTxn, type TxnMatch } from "@housing-compass/core";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { formStyles, usd } from "../components/forms";
@@ -141,6 +141,7 @@ function StatementInsights({ txns, added, onAdded }: { txns: BankTxn[]; added: s
   const sum = spendingSummary(txns);
   const recurring = findRecurring(txns, r.bills);
   const income = detectIncome(txns);
+  const changes = billChanges(txns, r.bills);
   const max = Math.max(1, ...sum.ranked.map((b) => sum.byBucket[b]));
   return (
     <>
@@ -161,6 +162,18 @@ function StatementInsights({ txns, added, onAdded }: { txns: BankTxn[]; added: s
         </View>
         <Text style={type.tiny}>{t("ins.spendNote")}</Text>
       </Section>
+      {changes.length ? (
+        <Section title={t("bc.title")}>
+          {changes.map((c) => (
+            <View key={c.billId} style={[formStyles.card, { borderColor: color.warn }]} testID="bill-change">
+              <Text style={[type.small, { fontWeight: "800" }]}>{t(c.changePct > 0 ? "bc.up" : "bc.down", { name: c.name, pct: Math.abs(c.changePct) })}</Text>
+              <Text style={type.tiny}>{t("bc.line", { tracked: usd(c.trackedCents), latest: usd(c.latestCents), date: c.date })}</Text>
+              <Button kind="secondary" label={t("bc.update", { amount: usd(c.latestCents) })} onPress={() => r.updateBill(c.billId, { amountCents: c.latestCents })} testID="bill-change-update" />
+            </View>
+          ))}
+          <Text style={type.tiny}>{t("bc.note")}</Text>
+        </Section>
+      ) : null}
       {recurring.length ? (
         <Section title={t("ins.recTitle")}>
           <Text style={type.small}>{t("ins.recBody")}</Text>

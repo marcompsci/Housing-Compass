@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type CreditStep, type Debt, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Contribution, type CreditStep, type Debt, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -48,6 +48,20 @@ interface RenterState {
   emergencyCents: number | null;
   splitPct: { goals: number; debt: number };
   weeklyCheckIn: boolean;
+  sideIncome: SideIncome[];
+  mileage: MileageEntry[];
+  sideSetAsidePct: number;
+  yearly: YearlyExpense[];
+  contribs: Contribution[];
+  addSideIncome(x: Omit<SideIncome, "id">): void;
+  removeSideIncome(id: string): void;
+  addMileage(x: Omit<MileageEntry, "id">): void;
+  removeMileage(id: string): void;
+  setSideSetAsidePct(p: number): void;
+  addYearly(x: Omit<YearlyExpense, "id">): void;
+  updateYearly(id: string, p: Partial<Omit<YearlyExpense, "id">>): void;
+  removeYearly(id: string): void;
+  contribute(goalId: string, amountCents: number, date: string): void;
   setEmergency(c: number | null): void;
   setSplitPct(p: { goals: number; debt: number }): void;
   setWeeklyCheckIn(on: boolean): void;
@@ -65,6 +79,7 @@ interface RenterState {
   restore(b: RenterBackup): void;
   addBill(b: Omit<Bill, "id">): void;
   removeBill(id: string): void;
+  updateBill(id: string, p: Partial<Omit<Bill, "id">>): void;
   toggleBillPaid(id: string, month: string): void;
   setTakeHome(c: number | null): void;
   addPhoto(key: string, p: { uri: string; at: string }): void;
@@ -85,7 +100,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [] };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -107,6 +122,7 @@ export const useRenter = create<RenterState>()(
       },
       clearRecentSearches: () => set({ recentSearches: [] }),
       addBill: (b) => set({ bills: [...get().bills, { ...b, id: uuid() }] }),
+      updateBill: (id, p) => set({ bills: get().bills.map((b) => (b.id === id ? { ...b, ...p } : b)) }),
       removeBill: (id) => {
         const { [id]: _gone, ...billPaid } = get().billPaid;
         set({ bills: get().bills.filter((b) => b.id !== id), billPaid, unusedSubs: get().unusedSubs.filter((x) => x !== id) });
@@ -125,13 +141,26 @@ export const useRenter = create<RenterState>()(
       removeDebt: (id) => set({ debts: get().debts.filter((d) => d.id !== id) }),
       addGoal: (g) => set({ goals: [...get().goals, { ...g, id: uuid() }] }),
       updateGoal: (id, p) => set({ goals: get().goals.map((g) => (g.id === id ? { ...g, ...p } : g)) }),
-      removeGoal: (id) => set({ goals: get().goals.filter((g) => g.id !== id) }),
+      removeGoal: (id) => set({ goals: get().goals.filter((g) => g.id !== id), contribs: get().contribs.filter((c) => c.goalId !== id) }),
       toggleUnusedSub: (id) => set({ unusedSubs: get().unusedSubs.includes(id) ? get().unusedSubs.filter((x) => x !== id) : [...get().unusedSubs, id] }),
       toggleCreditStep: (st) => set({ creditDone: get().creditDone.includes(st) ? get().creditDone.filter((x) => x !== st) : [...get().creditDone, st] }),
       setSetupDone: (setupDone) => set({ setupDone }),
       setEmergency: (emergencyCents) => set({ emergencyCents }),
       setSplitPct: (splitPct) => set({ splitPct }),
       setWeeklyCheckIn: (weeklyCheckIn) => set({ weeklyCheckIn }),
+      addSideIncome: (x) => set({ sideIncome: [{ ...x, id: uuid() }, ...get().sideIncome].slice(0, 5000) }),
+      removeSideIncome: (id) => set({ sideIncome: get().sideIncome.filter((x) => x.id !== id) }),
+      addMileage: (x) => set({ mileage: [{ ...x, id: uuid() }, ...get().mileage].slice(0, 5000) }),
+      removeMileage: (id) => set({ mileage: get().mileage.filter((x) => x.id !== id) }),
+      setSideSetAsidePct: (sideSetAsidePct) => set({ sideSetAsidePct }),
+      addYearly: (x) => set({ yearly: [...get().yearly, { ...x, id: uuid() }] }),
+      updateYearly: (id, p) => set({ yearly: get().yearly.map((x) => (x.id === id ? { ...x, ...p } : x)) }),
+      removeYearly: (id) => set({ yearly: get().yearly.filter((x) => x.id !== id) }),
+      contribute: (goalId, amountCents, date) =>
+        set({
+          goals: get().goals.map((g) => (g.id === goalId ? { ...g, savedCents: Math.min(100_000_000, g.savedCents + amountCents) } : g)),
+          contribs: [...get().contribs, { goalId, date, amountCents }].slice(-5000),
+        }),
       markBillPaid: (id, month) => {
         const cur = get().billPaid[id] ?? [];
         if (!cur.includes(month)) set({ billPaid: { ...get().billPaid, [id]: [...cur, month].slice(-36) } });
@@ -151,6 +180,11 @@ export const useRenter = create<RenterState>()(
           creditDone: b.data.creditDone,
           emergencyCents: b.data.emergencyCents ?? null,
           splitPct: b.data.splitPct ?? { goals: 50, debt: 30 },
+          sideIncome: b.data.sideIncome ?? [],
+          mileage: b.data.mileage ?? [],
+          sideSetAsidePct: b.data.sideSetAsidePct ?? 25,
+          yearly: b.data.yearly ?? [],
+          contribs: b.data.contribs ?? [],
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

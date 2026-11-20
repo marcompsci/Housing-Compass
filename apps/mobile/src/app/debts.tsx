@@ -3,7 +3,7 @@
  * and compare avalanche (highest rate first, least interest) with snowball (smallest balance
  * first, quickest wins). Device-only. General information, not financial advice.
  */
-import { payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
+import { extraPaymentImpact, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
 import { now } from "../config";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -93,6 +93,16 @@ function DebtsScreen() {
       {av && sn ? (
         <Section title={t("debt.compare")}>
           <Field label={t("debt.extra")} value={extra} onChangeText={setExtra} keyboardType="decimal-pad" hint={t("debt.extraHint")} testID="debt-extra" />
+          {(() => {
+            const imp = extraC > 0 ? extraPaymentImpact(debts, extraC) : null;
+            if (!imp) return null;
+            return (
+              <View style={[formStyles.card, { backgroundColor: color.verifiedSoft }]} testID="debt-whatif">
+                <Text style={[type.small, { fontWeight: "800" }]}>{t("wi.title", { amount: usd(extraC) })}</Text>
+                {imp.becomesFeasible ? <Text style={type.small}>{t("wi.feasible", { n: imp.newMonths })}</Text> : imp.monthsSaved !== null ? <Text style={type.small}>{t("wi.saves", { months: imp.monthsSaved, amount: usd(imp.interestSavedCents ?? 0) })}</Text> : <Text style={type.small}>{t("wi.still")}</Text>}
+              </View>
+            );
+          })()}
           <View style={formStyles.row}>
             {[
               { k: "avalanche", p: av, title: t("debt.avalanche"), why: t("debt.avalancheWhy") },

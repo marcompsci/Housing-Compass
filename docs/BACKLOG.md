@@ -31,6 +31,18 @@
 ## Done in v0.18
 - Bank CSV import (#25), plus paycheck planner, debts, credit, goals, found money, backup (see STATUS_REPORT)
 
+## Done in v0.19
+- Listing fit, letters, money calendar, statement insights, money check (see STATUS_REPORT)
+
+## Done in v0.20
+- Local allowed-increase figures per rent board (#23, #28), side income, mileage, taxes, yearly costs, deposit interest, year in review (see STATUS_REPORT)
+
+## Next ideas (after v0.20)
+30. Recheck local rent and deposit-interest figures each year (SF/LA/Oakland change in spring/summer; Berkeley each October)
+31. Add other rent-control cities with deposit-interest rules (e.g. Santa Monica, West Hollywood) from their official pages
+32. Use CA-specific tax set-aside guidance only after a tax professional reviews the copy
+33. Translate the quarterly date ranges ("covers") into Spanish and Chinese
+
 ## Next ideas (after v0.18)
 26. Re-verify or retire the 76 expired research leads; schedule rechecks
 27. Pick the CSV file directly (document picker) instead of pasting

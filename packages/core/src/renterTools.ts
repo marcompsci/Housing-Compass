@@ -195,7 +195,7 @@ export function waitlistAttention(w: WaitlistEntry, now: Date): "check_in_overdu
 
 // ───────── "What's next" plan ─────────
 export interface PlanItem {
-  kind: "rent_due" | "tour" | "app_deadline" | "deposit_return" | "waitlist_check_in" | "follow_up" | "bill_due" | "payday" | "goal_date" | "at_risk";
+  kind: "rent_due" | "tour" | "app_deadline" | "deposit_return" | "waitlist_check_in" | "follow_up" | "bill_due" | "payday" | "goal_date" | "at_risk" | "tax_due" | "yearly_due";
   date: string;
   title: string;
   detail: string;
@@ -203,7 +203,7 @@ export interface PlanItem {
   href: string;
   urgent: boolean;
   /** Machine-readable detail so the app can translate it (detail stays as English text). */
-  detailCode?: "in_days" | "due_today" | "days_late" | "overdue_days" | "check_in_soon" | "check_in_overdue" | "official_application" | "your_reminder" | "autopay" | "set_aside" | "to_go" | "at_risk";
+  detailCode?: "in_days" | "due_today" | "days_late" | "overdue_days" | "check_in_soon" | "check_in_overdue" | "official_application" | "your_reminder" | "autopay" | "set_aside" | "to_go" | "at_risk" | "tax_quarter" | "yearly";
   n?: number;
   /** Exact start time (ISO), for items that have one, so the app can show it in local time. */
   at?: string;

@@ -2,7 +2,8 @@
  * Savings goals: a move-in fund, an emergency fund, a deposit — with how much to put away each
  * month and from each paycheck to get there by the target date. Device-only.
  */
-import { goalPlan } from "@housing-compass/core";
+import { crossedMilestones, goalPlan, savingStreakWeeks } from "@housing-compass/core";
+import { today } from "../components/forms";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, usd } from "../components/forms";
@@ -27,9 +28,10 @@ function GoalCard({ id }: { id: string }) {
   const { t } = useT();
   const g = useRenter((s) => s.goals.find((x) => x.id === id))!;
   const pay = useRenter((s) => s.pay);
-  const update = useRenter((s) => s.updateGoal);
+  const contribute = useRenter((s) => s.contribute);
   const remove = useRenter((s) => s.removeGoal);
   const [add, setAdd] = useState("");
+  const [cheer, setCheer] = useState<number | null>(null);
   const p = goalPlan(g, now(), pay);
   return (
     <View style={formStyles.card} testID="goal-card">
@@ -46,7 +48,12 @@ function GoalCard({ id }: { id: string }) {
       {p.perMonthCents !== null ? <KV k={t("goal.perMonth")} v={usd(p.perMonthCents)} /> : null}
       {p.perPaycheckCents !== null ? <KV k={t("goal.perCheck")} v={usd(p.perPaycheckCents)} /> : null}
       {g.targetDate ? <Text style={type.tiny}>{p.overdue ? t("goal.overdue", { date: g.targetDate }) : t("goal.by", { date: g.targetDate })}</Text> : null}
-      {p.remainingCents === 0 ? <Text style={[type.small, { color: color.verified, fontWeight: "700" }]}>{t("goal.done")}</Text> : null}
+      {cheer ? (
+        <Text style={[type.body, { color: color.verified, fontWeight: "800" }]} testID="goal-cheer">
+          {cheer === 100 ? t("goal.done") : t("goal.milestone", { pct: cheer })}
+        </Text>
+      ) : null}
+      {p.remainingCents === 0 && !cheer ? <Text style={[type.small, { color: color.verified, fontWeight: "700" }]}>{t("goal.done")}</Text> : null}
       <View style={formStyles.row}>
         <View style={{ flex: 1, minWidth: 140 }}>
           <Field label={t("goal.add")} value={add} onChangeText={setAdd} keyboardType="decimal-pad" testID="goal-add-amount" />
@@ -57,7 +64,11 @@ function GoalCard({ id }: { id: string }) {
           testID="goal-add-btn"
           onPress={() => {
             const c = toCents(add);
-            if (c > 0) update(g.id, { savedCents: Math.min(100_000_000, g.savedCents + c) });
+            if (c > 0) {
+              const hit = crossedMilestones(g, c);
+              contribute(g.id, c, today(now()));
+              setCheer(hit.length ? hit[hit.length - 1]! : null);
+            }
             setAdd("");
           }}
         />
@@ -69,6 +80,8 @@ function GoalCard({ id }: { id: string }) {
 function GoalsScreen() {
   const { t } = useT();
   const goals = useRenter((s) => s.goals);
+  const contribs = useRenter((s) => s.contribs);
+  const streak = savingStreakWeeks(contribs, now());
   const addGoal = useRenter((s) => s.addGoal);
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
@@ -81,6 +94,12 @@ function GoalsScreen() {
       <Banner tone="info" icon="flag-outline" title={t("goal.title")}>
         {t("goal.intro")}
       </Banner>
+      {goals.length ? (
+        <View style={[formStyles.card, { flexDirection: "row", alignItems: "center", gap: 10 }]} testID="saving-streak">
+          <Icon name={streak ? "flame" : "flame-outline"} size={26} tint={streak ? color.warn : color.muted} />
+          <Text style={[type.body, { flex: 1 }]}>{streak ? t("goal.streak", { n: streak }) : t("goal.noStreak")}</Text>
+        </View>
+      ) : null}
       {goals.map((g) => (
         <GoalCard key={g.id} id={g.id} />
       ))}

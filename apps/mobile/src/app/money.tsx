@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { CREDIT_CHECKLIST, billStatuses, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { CREDIT_CHECKLIST, billStatuses, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -52,16 +52,24 @@ function MoneyScreen() {
     hasGoal: r.goals.length > 0,
   });
   const nextHref: Record<string, string> = { rent_on_time: "/rent", no_overdue: "/bills", paycheck_plan: "/paycheck", emergency: "/money", utilization: "/credit", credit_steps: "/credit", goal: "/goals" };
+  const side = sideIncomeSummary(r.sideIncome, r.mileage, r.sideSetAsidePct, now());
+  const earn: Array<{ icon: IconName; label: string; sub: string; href: string; testID: string }> = [
+    { icon: "car-outline", label: t("side.title"), sub: side.earnedMonthCents ? t("earn.sideSub", { amount: usd(side.earnedMonthCents) }) : t("earn.sideEmpty"), href: "/side-income", testID: "earn-side" },
+    { icon: "gift-outline", label: t("money.found"), sub: t("money.foundSub"), href: "/found-money", testID: "earn-found" },
+    { icon: "wallet-outline", label: t("dep.title"), sub: t("dep.sub"), href: "/deposit-interest", testID: "earn-deposit" },
+    { icon: "trending-up-outline", label: t("inc.link"), sub: t("earn.incSub"), href: "/rent-increase", testID: "earn-increase" },
+  ];
   const tools: Array<{ icon: IconName; label: string; sub: string; href: string; testID: string }> = [
     { icon: "wallet-outline", label: t("money.paycheck"), sub: t("money.paycheckSub"), href: "/paycheck", testID: "tool-paycheck" },
     { icon: "cloud-upload-outline", label: t("money.import"), sub: t("money.importSub"), href: "/import", testID: "tool-import" },
     { icon: "trending-down-outline", label: t("money.debts"), sub: t("money.debtsSub"), href: "/debts", testID: "tool-debts" },
     { icon: "speedometer-outline", label: t("money.credit"), sub: t("money.creditSub"), href: "/credit", testID: "tool-credit" },
     { icon: "flag-outline", label: t("money.goals"), sub: t("money.goalsSub"), href: "/goals", testID: "tool-goals" },
-    { icon: "gift-outline", label: t("money.found"), sub: t("money.foundSub"), href: "/found-money", testID: "tool-found" },
     { icon: "people-outline", label: t("money.split"), sub: t("money.splitSub"), href: "/split", testID: "tool-split" },
     { icon: "calendar-number-outline", label: t("cal.title"), sub: t("plan.calSub"), href: "/calendar", testID: "tool-calendar" },
     { icon: "mail-outline", label: t("let.title"), sub: t("let.sub"), href: "/letters", testID: "tool-letters" },
+    { icon: "file-tray-stacked-outline", label: t("yr.title"), sub: r.yearly.length ? t("yr.hubSub", { amount: usd(yearlyPlan(r.yearly, now()).monthlyTotalCents) }) : t("yr.sub"), href: "/yearly", testID: "tool-yearly" },
+    { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
     { icon: "save-outline", label: t("money.backup"), sub: t("money.backupSub"), href: "/backup", testID: "tool-backup" },
   ];
 
@@ -141,6 +149,22 @@ function MoneyScreen() {
         ) : (
           <Text style={type.tiny}>{t("ef.needRent")}</Text>
         )}
+      </Section>
+
+      <Section title={t("earn.title")}>
+        <Text style={type.small}>{t("earn.body")}</Text>
+        {earn.map((x) => (
+          <Pressable key={x.href} onPress={() => router.push(x.href as never)} accessibilityRole="button" style={styles.item} testID={x.testID}>
+            <View style={[styles.iconBox, { backgroundColor: color.verifiedSoft }]}>
+              <Icon name={x.icon} size={20} tint={color.verified} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={type.h3}>{x.label}</Text>
+              <Text style={type.tiny}>{x.sub}</Text>
+            </View>
+            <Icon name="chevron-forward" tint={color.muted} />
+          </Pressable>
+        ))}
       </Section>
 
       <Section title={t("money.tools")}>

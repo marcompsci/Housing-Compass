@@ -4,12 +4,13 @@
  * 90 days for more than 10%). Many homes are exempt and local rules can be stricter, so it
  * always points to the local office. General information, not legal advice.
  */
-import { NOTICE_SOURCE, RENT_CAP_SOURCE, rentIncreaseCheck } from "@housing-compass/core";
+import { LOCAL_INCREASES, localIncreaseCheck, localIncreaseFor, NOTICE_SOURCE, RENT_CAP_SOURCE, RENT_FIGURES_CHECKED_ON, rentIncreaseCheck, STATE_CAPS_2026_27, STATE_CAPS_SOURCE } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { Field, formStyles, toCents } from "../components/forms";
-import { Banner, Button, KV } from "../components/ui";
+import { Field, formStyles, toCents, usd } from "../components/forms";
+import { Banner, Button, Chip, KV, Section } from "../components/ui";
+import { now } from "../config";
 import { useT } from "../i18n";
 import { openExternal } from "../lib/links";
 import { useRenter } from "../state/renter";
@@ -27,6 +28,9 @@ export default function RentIncrease() {
   const [effective, setEffective] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<ReturnType<typeof rentIncreaseCheck> | null>(null);
+  const [office, setOffice] = useState<string | null>(null);
+  const local = office ? localIncreaseFor(office, now().toISOString().slice(0, 10)) : null;
+  const lc = local && toCents(cur) > 0 && toCents(next) > 0 ? localIncreaseCheck({ currentRentCents: toCents(cur), newRentCents: toCents(next), allowedPct: local.pct }) : null;
 
   const check = () => {
     const c = toCents(cur);
@@ -52,6 +56,33 @@ export default function RentIncrease() {
           <Field label={t("inc.new")} value={next} onChangeText={setNext} keyboardType="decimal-pad" testID="inc-new" />
         </View>
       </View>
+      <Section title={t("li.title")}>
+        <Text style={type.small}>{t("li.body")}</Text>
+        <View style={formStyles.row}>
+          {LOCAL_INCREASES.map((x) => (
+            <Chip key={x.officeId} label={x.city} selected={office === x.officeId} onPress={() => setOffice(office === x.officeId ? null : x.officeId)} />
+          ))}
+        </View>
+        {local ? (
+          <View style={[formStyles.card, lc?.over && { borderColor: color.danger, backgroundColor: color.dangerSoft }]} testID="local-result">
+            <KV k={t("li.allowed", { city: local.city })} v={`${local.pct}%`} strong />
+            <KV k={t("li.period")} v={`${local.from} → ${local.to}`} />
+            {lc ? <KV k={t("li.max")} v={usd(lc.maxNewRentCents)} /> : null}
+            {lc ? <Text style={[type.body, { fontWeight: "700", color: lc.over ? color.danger : color.verified }]}>{lc.over ? t("li.over", { amount: usd(lc.overByCents) }) : t("li.within")}</Text> : <Text style={type.tiny}>{t("li.enter")}</Text>}
+            <Text style={type.tiny}>{local.note}</Text>
+            <Button kind="ghost" icon="open-outline" label={t("li.official")} onPress={() => openExternal(local.url)} />
+          </View>
+        ) : null}
+        <Text style={type.tiny}>{t("li.covered", { date: RENT_FIGURES_CHECKED_ON })}</Text>
+      </Section>
+      <Text style={[type.small, { fontWeight: "700" }]}>{t("li.stateTitle")}</Text>
+      <View style={formStyles.row}>
+        {STATE_CAPS_2026_27.map((c) => (
+          <Chip key={c.region} label={`${c.region} ${c.pct}%`} selected={cpi === String(Math.round((c.pct - 5) * 10) / 10)} onPress={() => setCpi(String(Math.round((c.pct - 5) * 10) / 10))} />
+        ))}
+      </View>
+      <Text style={type.tiny}>{t("li.stateNote")}</Text>
+      <Button kind="ghost" icon="open-outline" label="oag.ca.gov/rentcaps ↗" onPress={() => openExternal(STATE_CAPS_SOURCE)} />
       <Field label={t("inc.cpi")} value={cpi} onChangeText={setCpi} keyboardType="decimal-pad" hint={t("inc.cpiHint")} testID="inc-cpi" />
       <View style={formStyles.row}>
         <View style={{ flex: 1, minWidth: 140 }}>

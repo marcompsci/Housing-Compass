@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.19). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.20). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -45,6 +45,14 @@ GET OUT OF DEBT AND BUILD CREDIT
 • Compare avalanche and snowball payoff plans.
 • Check your credit card use and follow a simple credit checklist.
 • Find money you may be owed: unclaimed property, tax credits and bill discounts from official programs.
+• See what an extra payment each month saves in time and interest.
+
+EARN MORE AND KEEP MORE
+• Track gig and side income, log business miles at the IRS rate, and set aside money for taxes — with the quarterly due dates.
+• Plan for yearly costs like car registration and renters insurance with a monthly amount.
+• Check a rent increase against San Francisco, Oakland, Berkeley and Los Angeles rent-control limits and the 2026–27 statewide cap.
+• See whether your city requires interest on your security deposit.
+• Get a "my year in money" summary from your own records.
 • Ask your landlord to report on-time rent, or ask for a payment plan, with ready-made letters.
 
 PROTECT YOUR DEPOSIT

@@ -816,6 +816,82 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await page.getByRole("button", { name: "English" }).click();
 }
 
+// ── v0.20: side income, mileage, tax set-aside, yearly costs, deposit interest, local rent limits, what-if, bill changes, streaks, year in review
+{
+  const iso = (d) => d.toISOString().slice(0, 10);
+  await page.goto(`${base}/side-income`);
+  await page.getByTestId("side-source").fill("DoorDash");
+  await page.getByTestId("side-amount").fill("400");
+  await page.getByTestId("side-add").click();
+  await page.getByTestId("side-miles").fill("100");
+  await page.getByTestId("side-purpose").fill("Deliveries");
+  await page.getByTestId("side-log-miles").click();
+  await page.getByTestId("side-entry").nth(1).waitFor();
+  check((await page.getByTestId("side-year").innerText()) === "$400", "side income totals for the year");
+  check((await page.getByTestId("side-mileage").innerText()) === "$76", "mileage deduction uses the IRS rate for the trip date");
+  check((await page.getByTestId("side-setaside").innerText()) === "$81", "tax set-aside is a share of profit after mileage");
+  check((await page.getByText(/2027-01-15/).count()) >= 1, "quarterly estimated-tax dates listed");
+  await shot("63-side-income", true);
+
+  await page.goto(`${base}/yearly`);
+  await page.getByRole("button", { name: "Renters insurance" }).click();
+  await page.getByTestId("yearly-amount").fill("150");
+  await page.getByTestId("yearly-due").fill(iso(new Date(NOW.getTime() + 20 * 86_400_000)));
+  await page.getByTestId("yearly-create").click();
+  await page.getByTestId("yearly-card").waitFor();
+  check(/\$150/.test(await page.getByTestId("yearly-total").innerText()), "yearly cost spread into a monthly amount");
+  await shot("64-yearly");
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Renters insurance · \$150/).count()) >= 1, "upcoming yearly cost appears in My plan");
+
+  await page.goto(`${base}/deposit-interest`);
+  await page.getByTestId("dep-amount").fill("2000");
+  check((await page.getByTestId("dep-result").innerText()).includes("$84"), "deposit interest estimate uses the official rate");
+
+  await page.goto(`${base}/rent-increase`);
+  await page.getByTestId("inc-current").fill("2000");
+  await page.getByTestId("inc-new").fill("2100");
+  await page.getByRole("button", { name: "San Francisco", exact: true }).click();
+  await page.getByTestId("local-result").waitFor();
+  check(/\$68 more than the local limit/.test(await page.getByTestId("local-result").innerText()), "local rent-control limit compared by city");
+  await page.getByTestId("local-result").scrollIntoViewIfNeeded();
+  await shot("65-local-limit");
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-extra").fill("50");
+  await page.getByTestId("debt-whatif").waitFor();
+  check(/What \$50 extra/.test(await page.getByTestId("debt-whatif").innerText()), "what-if extra debt payment shown");
+
+  await page.goto(`${base}/import`);
+  await page.getByTestId("csv-input").fill("Date,Description,Amount\n2026-10-03,PG&E WEB ONLINE,-140.00\n");
+  await page.getByTestId("csv-read").click();
+  await page.getByTestId("bill-change").waitFor();
+  check(/PG&E went up 56%/.test(await page.getByTestId("bill-change").innerText()), "bill amount change spotted from a statement");
+  await page.getByTestId("bill-change-update").click();
+  await page.getByTestId("bill-change").waitFor({ state: "detached" });
+
+  await page.goto(`${base}/goals`);
+  await page.getByTestId("goal-name").fill("Test fund");
+  await page.getByTestId("goal-target").fill("100");
+  await page.getByTestId("goal-create").click();
+  const tf = page.getByTestId("goal-card").filter({ hasText: "Test fund" });
+  await tf.getByTestId("goal-add-amount").fill("30");
+  await tf.getByTestId("goal-add-btn").click();
+  check((await tf.getByTestId("goal-cheer").innerText()).includes("25%"), "goal milestone celebrated");
+  check(/1-week saving streak/.test(await page.getByTestId("saving-streak").innerText()), "saving streak counted");
+  await shot("66-goal-streak");
+
+  await page.goto(`${base}/money`);
+  await page.getByTestId("earn-side").waitFor();
+  check(/\$400 earned this month/.test(await page.getByTestId("earn-side").innerText()), "money hub has an earn-more section");
+
+  await page.goto(`${base}/year-review`);
+  await page.getByTestId("yir-card").waitFor();
+  check(/\$400/.test(await page.getByTestId("yir-card").innerText()), "year in review totals side income");
+  await shot("67-year-review");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

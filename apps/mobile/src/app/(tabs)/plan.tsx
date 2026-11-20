@@ -2,7 +2,7 @@
  * My plan: one list of what's coming up — rent due, tours, application deadlines and
  * follow-ups, the deposit-return deadline and waitlist check-ins — plus the renter tools.
  */
-import { atRiskObligations, billPlanItems, billStatuses, buildPlan, cashFlowForecast, moneyPlanItems, paycheckPlan, rentSummary, upcomingObligations, type PlanItem } from "@housing-compass/core";
+import { atRiskObligations, billPlanItems, billStatuses, buildPlan, cashFlowForecast, moneyPlanItems, paycheckPlan, rentSummary, taxPlanItems, upcomingObligations, yearlyPlanItems, type PlanItem } from "@housing-compass/core";
 import { useEffect, useState } from "react";
 import { authenticate, canUseLock } from "../../lib/lock";
 import { router } from "expo-router";
@@ -28,6 +28,8 @@ const KIND_ICON: Record<PlanItem["kind"], IconName> = {
   payday: "wallet-outline",
   goal_date: "flag-outline",
   at_risk: "alert-circle-outline",
+  tax_due: "document-attach-outline",
+  yearly_due: "file-tray-stacked-outline",
 };
 
 export default function Plan() {
@@ -43,7 +45,7 @@ export default function Plan() {
     moveOut: r.moveOut,
     waitlists: r.waitlists,
     now: n,
-    extra: [...billPlanItems(billStatuses(r.bills, r.billPaid, n), n), ...moneyItems()],
+    extra: [...billPlanItems(billStatuses(r.bills, r.billPaid, n), n), ...moneyItems(), ...taxPlanItems(n, r.sideIncome.length > 0), ...yearlyPlanItems(r.yearly, n)],
   });
   function moneyItems(): PlanItem[] {
     const from = n.toISOString().slice(0, 10);
@@ -67,7 +69,7 @@ export default function Plan() {
     const c = p.detailCode;
     const txt =
       c === "in_days" ? (p.kind === "deposit_return" ? t("move.daysLeft", { n: p.n ?? 0 }) : t("rent.dueIn", { n: p.n ?? 0 })) : c === "due_today" ? t("rent.dueToday") : c === "days_late" ? t("rent.lateBy", { n: p.n ?? 0 }) : c === "overdue_days" ? t("move.overdue", { n: p.n ?? 0 })
-      : c === "check_in_soon" ? t("wl.soon") : c === "check_in_overdue" ? t("wl.overdue") : c === "official_application" ? t("plan.official") : c === "your_reminder" ? t("plan.yourReminder") : c === "autopay" ? t("plan.autopay") : c === "set_aside" ? (p.n ? t("money.setAside", { amount: usd(p.n) }) : t("pay.nothingDue")) : c === "to_go" ? t("plan.toGo", { amount: usd(p.n ?? 0) }) : c === "at_risk" ? t("plan.atRisk") : p.detail;
+      : c === "check_in_soon" ? t("wl.soon") : c === "check_in_overdue" ? t("wl.overdue") : c === "official_application" ? t("plan.official") : c === "your_reminder" ? t("plan.yourReminder") : c === "autopay" ? t("plan.autopay") : c === "set_aside" ? (p.n ? t("money.setAside", { amount: usd(p.n) }) : t("pay.nothingDue")) : c === "to_go" ? t("plan.toGo", { amount: usd(p.n ?? 0) }) : c === "at_risk" ? t("plan.atRisk") : c === "tax_quarter" ? t("plan.taxQuarter") : c === "yearly" ? (p.n ? t("plan.toGo", { amount: usd(p.n) }) : t("yr.ready")) : p.detail;
     return `${p.date} · ${txt}`;
   };
   const rs = r.rentSetup ? rentSummary(r.rentSetup, r.payments, n) : null;
@@ -75,6 +77,7 @@ export default function Plan() {
     { icon: "cash-outline", label: t("plan.toolRent"), sub: rs && rs.onTimeStreak ? t("rent.streak", { n: rs.onTimeStreak }) : t("plan.toolRentSub"), href: "/rent", testID: "tool-rent" },
     { icon: "cash-outline", label: t("money.title"), sub: t("money.hubSub"), href: "/money", testID: "tool-money" },
     { icon: "calendar-number-outline", label: t("cal.title"), sub: t("plan.calSub"), href: "/calendar", testID: "tool-calendar" },
+    { icon: "car-outline", label: t("side.title"), sub: r.sideIncome.length ? t("plan.sideCount", { n: r.sideIncome.length }) : t("earn.sideEmpty"), href: "/side-income", testID: "tool-side" },
     { icon: "receipt-outline", label: t("plan.toolBills"), sub: r.bills.length ? t("plan.billsCount", { n: r.bills.length }) : t("plan.toolBillsSub"), href: "/bills", testID: "tool-bills" },
     { icon: "trending-up-outline", label: t("inc.link"), sub: t("plan.toolIncSub"), href: "/rent-increase", testID: "tool-increase" },
     { icon: "clipboard-outline", label: t("plan.toolMove"), sub: t("plan.toolMoveSub"), href: "/move", testID: "tool-move" },

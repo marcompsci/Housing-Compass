@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, BILL_SCRIPTS, billStatuses, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, BILL_SCRIPTS, billStatuses, dueDateSuggestions, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -82,6 +82,23 @@ export default function Bills() {
         <Banner tone="info" icon="receipt-outline" title={t("bills.title")}>
           {t("bills.intro")}
         </Banner>
+
+        {(() => {
+          const sug = dueDateSuggestions(r.bills, r.pay, now());
+          if (!sug.length) return null;
+          return (
+            <Section title={t("dd.title")}>
+              <Text style={type.small}>{t("dd.body")}</Text>
+              {sug.map((x) => (
+                <View key={x.billId} style={formStyles.row} testID="due-suggestion">
+                  <Icon name="swap-horizontal-outline" size={18} tint={color.brand} />
+                  <Text style={[type.small, { flex: 1 }]}>{t("dd.line", { name: x.name, from: x.currentDay, to: x.suggestedDay })}</Text>
+                </View>
+              ))}
+              <Text style={type.tiny}>{t("dd.note")}</Text>
+            </Section>
+          );
+        })()}
 
         <Section title={t("bills.thisMonth")}>
           {r.rentSetup ? (

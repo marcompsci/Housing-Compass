@@ -458,6 +458,11 @@ export const RenterBackupSchema = z.object({
     creditDone: z.array(z.enum(CREDIT_CHECKLIST)).max(20),
     emergencyCents: cents.nullable().optional(),
     splitPct: z.object({ goals: z.number().min(0).max(100), debt: z.number().min(0).max(100) }).optional(),
+    sideIncome: z.array(z.object({ id: shortText(64), date: day, source: shortText(60), amountCents: cents })).max(5000).optional(),
+    mileage: z.array(z.object({ id: shortText(64), date: day, miles: z.number().min(0).max(5000), purpose: shortText(80) })).max(5000).optional(),
+    sideSetAsidePct: z.number().min(0).max(50).optional(),
+    yearly: z.array(z.object({ id: shortText(64), name: shortText(60), amountCents: cents, nextDue: day, savedCents: cents })).max(100).optional(),
+    contribs: z.array(z.object({ goalId: shortText(64), date: day, amountCents: cents })).max(5000).optional(),
   }),
 });
 export type RenterBackup = z.infer<typeof RenterBackupSchema>;

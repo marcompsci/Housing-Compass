@@ -1,4 +1,40 @@
-# Status report — v0.19 (2026-11-19): 20 more phases — know where you stand, ask for help, stay ahead of every due date
+# Status report — v0.20 (2026-11-20): 20 more phases — earn more, keep more, never get surprised
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Local allowed increases | SF 1.6% (Mar 2026–Feb 2027), Oakland 2.3% (from Aug 1, 2026), Berkeley 1.0% (2026), LA RSO 3% (Jul 2026–Jun 2027), each with its official page. Checked 2026-11-20. | `core/earn.ts` `LOCAL_INCREASES` |
+| 2 | Statewide cap presets | Attorney General's 2026–27 caps (SF area 8.8%, LA 8.7%, SD 8.2%, Riverside 8.1%); one tap fills the CPI. | `STATE_CAPS_2026_27` |
+| 3 | Local check in the increase checker | Pick a city: allowed %, highest new rent and how far over a notice is. | `localIncreaseCheck`; Rent increase checker |
+| 4 | Deposit interest | Official SF (4.2%) and Berkeley (0.9%, 2025) rates with a simple estimate and link. | `DEPOSIT_INTEREST`; `/deposit-interest` |
+| 5 | Side income | Log gig/freelance earnings; month, year and by-source totals. | `sideIncomeSummary`; `/side-income` |
+| 6 | Tax set-aside | Pick 15–30%; set-aside on profit after mileage. Not tax advice. | Side income |
+| 7 | Quarterly tax dates | Form 1040-ES due dates; shown on Side income and in My plan within 45 days when you have side income. | `estimatedTaxDates`, `taxPlanItems` |
+| 8 | Mileage log | Business miles at the IRS rate for the trip date (70¢ 2025; 72.5¢ Jan–Jun 2026; 76¢ from Jul 1, 2026); CSV export. | `IRS_MILEAGE_RATES` |
+| 9 | Yearly costs | Car registration, insurance, gifts: monthly amount to set aside, progress, "paid — start next year's". | `yearlyPlan`; `/yearly` |
+| 10 | Yearly costs everywhere | Monthly total on the money hub; due items in My plan. | `yearlyPlanItems` |
+| 11 | Due-date suggestions | Flags bills due 1–3 days before payday and suggests asking for a day after payday. | `dueDateSuggestions`; Bills & budget |
+| 12 | What-if extra payment | Months sooner and interest saved for an extra monthly amount. | `extraPaymentImpact`; Debt payoff |
+| 13 | Saving streak | Goal contributions are logged; weeks in a row with a contribution. | `savingStreakWeeks`; Savings goals |
+| 14 | Milestones | Celebrates passing 25/50/75/100% of a goal. | `crossedMilestones` |
+| 15 | Bill changes | Statement import flags tracked bills whose latest charge moved 10%+; one tap updates the amount. | `billChanges`; Import |
+| 16 | Year in review | Rent paid and on time, late fees, bills checked off, side income and savings; share as text. | `yearInReview`; `/year-review` |
+| 17 | Earn more & keep more | New money-hub section: side income, found money, deposit interest, rent-increase check. | Money hub |
+| 18 | Backup, export, lock | New records in backups (strict schema), "Download my data" and "Clear this device"; Face ID lock on the new screens. | `RenterBackupSchema`, `lib/myData.ts` |
+| 19 | Translations | 107 new strings in English, Spanish and Simplified Chinese. | `strings.ts` |
+| 20 | Tests | 14 new core tests; 14 new browser checks. | `test/v020.test.ts`, e2e |
+
+Sources checked 2026-11-20: sf.gov (1.6%, deposit interest 4.2%), oaklandca.gov RAP (2.3%), rentboard.berkeleyca.gov (1.0% AGA), housing.lacity.gov (3%), oag.ca.gov/rentcaps (statewide caps), irs.gov (mileage rates, Form 1040-ES). Local figures change every year — see BACKLOG #30.
+
+### Tests (all passing)
+- Core: 227 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 144 checks, screenshots 63–67
+
+Still blocked on the owner: merge, iPhone install, re-verify the 76 expired research leads, Supabase keys, data agreements, `eas init`, counsel and native-speaker review, App Store URLs and screenshots.
+
+---
+
+## Previous: v0.19 (2026-11-19): 20 more phases — know where you stand, ask for help, stay ahead of every due date
 
 | # | Phase | What it does | Where |
 |---|---|---|---|
