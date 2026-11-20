@@ -892,6 +892,78 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await shot("67-year-review");
 }
 
+// ── v0.21: safe to spend, week ahead, side-work expenses & hourly pay, monthly goal, credit tracker, bill wins, roommates, card timing, payoff-by, bills in work hours
+{
+  await page.goto(`${base}/money`);
+  await page.getByTestId("safe-to-spend").waitFor();
+  check(/\$[\d,]+/.test(await page.getByTestId("safe-to-spend").innerText()), "safe to spend today shown");
+  check((await page.getByTestId("tool-wins").count()) === 1 && (await page.getByTestId("tool-roommates").count()) === 1, "money hub links bill wins and roommates");
+  await shot("68-today");
+
+  await page.goto(`${base}/side-income`);
+  await page.getByTestId("side-source").fill("Instacart");
+  await page.getByTestId("side-amount").fill("100");
+  await page.getByTestId("side-hours").fill("4");
+  await page.getByTestId("side-add").click();
+  await page.getByTestId("side-exp-amount").fill("20");
+  await page.getByTestId("side-exp-add").click();
+  await page.getByTestId("side-expenses").waitFor();
+  check((await page.getByTestId("side-expenses").innerText()) === "$20", "side-work expenses tracked");
+  check(/\/h/.test(await page.getByTestId("side-hourly").innerText()), "real hourly pay after costs shown");
+  await page.getByTestId("side-goal-input").fill("1000");
+  await page.getByTestId("side-goal-save").click();
+  check(/of \$1,000 this month/.test(await page.getByTestId("side-goal").innerText()), "monthly side-income goal tracked");
+
+  await page.goto(`${base}/credit-tools`);
+  await page.getByTestId("report-experian").click();
+  check((await page.getByText("Checked — free again on 2026-11-12").count()) === 1, "free weekly report check dates");
+  await page.getByTestId("inq-lender").fill("Car loan");
+  await page.getByTestId("inq-date").fill("2026-01-10");
+  await page.getByTestId("inq-add").click();
+  check(/Counts until 2027-01-10/.test(await page.getByTestId("inquiry-row").innerText()), "hard inquiry shows when it stops counting");
+  await page.getByTestId("dispute-item").fill("Late payment I didn't make");
+  await page.getByTestId("dispute-sent").fill("2026-10-01");
+  await page.getByTestId("dispute-add").click();
+  check(/Response late/.test(await page.getByTestId("dispute-row").innerText()), "dispute past 30 days flagged");
+  await shot("69-credit-tracker", true);
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Response is late — follow up/).count()) >= 1, "late dispute appears in My plan");
+
+  await page.goto(`${base}/wins`);
+  await page.getByTestId("win-company").fill("Comcast");
+  await page.getByTestId("win-monthly").fill("20");
+  await page.getByTestId("win-add").click();
+  await page.getByTestId("win-card").waitFor();
+  check(/\$20\/mo/.test(await page.getByTestId("win-card").innerText()) && (await page.getByTestId("wins-year").innerText()) !== "$0", "bill wins add up over 12 months");
+  await shot("70-wins");
+
+  await page.goto(`${base}/roommates`);
+  await page.getByTestId("iou-person").fill("Sam");
+  await page.getByTestId("iou-amount").fill("45");
+  await page.getByTestId("iou-add").click();
+  check(/Sam owes you \$45/.test(await page.getByTestId("iou-balance").innerText()), "roommate balances");
+  await page.getByTestId("share-bill").fill("Internet");
+  await page.getByTestId("share-total").fill("90");
+  await page.getByTestId("share-write").click();
+  check(/Your share of Internet is \$45 \(total \$90\)/.test(await page.getByTestId("share-msg").innerText()), "share message written");
+  await shot("71-roommates", true);
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-timing-edit").first().click();
+  await page.getByTestId("debt-stmt-day").fill("20");
+  await page.getByTestId("debt-timing-save").click();
+  check(/Pay by 2026-11-18/.test(await page.getByTestId("debt-statement").first().innerText()), "pay-before-statement-closes date");
+  check(/\/mo/.test(await page.getByTestId("payoff-by").innerText()), "pay off by a date calculator");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("hourly-wage").fill("25");
+  await page.getByTestId("hourly-save").click();
+  check((await page.getByText(/h of work/).count()) >= 1, "bills shown in work hours");
+  await page.getByTestId("hourly-wage").scrollIntoViewIfNeeded();
+  await shot("72-work-hours");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

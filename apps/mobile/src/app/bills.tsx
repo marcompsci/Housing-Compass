@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, BILL_SCRIPTS, billStatuses, dueDateSuggestions, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, BILL_SCRIPTS, billStatuses, dueDateSuggestions, hoursToCover, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -72,6 +72,7 @@ export default function Bills() {
   const month = today(n).slice(0, 7);
   const statuses = billStatuses(r.bills, r.billPaid, n);
   const [takeHome, setTakeHome] = useState(r.takeHomeCents ? String(r.takeHomeCents / 100) : "");
+  const [wage, setWage] = useState(r.hourlyCents ? String(r.hourlyCents / 100) : "");
   const budget = r.takeHomeCents ? budgetSnapshot(r.takeHomeCents, r.rentSetup?.amountCents ?? 0, r.bills) : null;
   const stateTag = (s: (typeof statuses)[number]) =>
     s.state === "paid" ? <Tag label={t("bills.paid")} tone="good" /> : s.state === "overdue" ? <Tag label={t("rent.lateBy", { n: -s.daysUntilDue })} tone="warn" /> : s.state === "due_soon" ? <Tag label={s.daysUntilDue === 0 ? t("rent.dueToday") : t("rent.dueIn", { n: s.daysUntilDue })} tone="warn" /> : null;
@@ -131,6 +132,7 @@ export default function Bills() {
                   <Text style={type.tiny}>
                     {t(`bills.c.${s.bill.category}`)} · {t("bills.dueOn", { date: s.nextDue })}
                     {s.bill.autopay ? ` · ${t("bills.autopayShort")}` : ""}
+                    {r.hourlyCents ? ` · ${t("hrs.short", { n: hoursToCover(s.bill.amountCents, r.hourlyCents) ?? 0 })}` : ""}
                   </Text>
                 </View>
                 {s.bill.category === "subscription" ? (
@@ -182,6 +184,22 @@ export default function Bills() {
         </Section>
 
         <AddBill />
+
+        <Section title={t("hrs.title")}>
+          <Text style={type.small}>{t("hrs.body")}</Text>
+          <View style={formStyles.row}>
+            <View style={{ flex: 1, minWidth: 160 }}>
+              <Field label={t("hrs.wage")} value={wage} onChangeText={setWage} keyboardType="decimal-pad" testID="hourly-wage" />
+            </View>
+            <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => r.setHourly(toCents(wage) > 0 ? toCents(wage) : null)} testID="hourly-save" />
+          </View>
+          {r.hourlyCents && r.rentSetup ? <Text style={[type.small, { fontWeight: "700" }]} testID="rent-hours">{t("hrs.rent", { n: hoursToCover(r.rentSetup.amountCents, r.hourlyCents) ?? 0 })}</Text> : null}
+        </Section>
+
+        <Banner tone="warn" icon="alert-circle-outline" title={t("scam.billTitle")}>
+          {t("scam.billBody")}
+        </Banner>
+        <Button kind="secondary" icon="trophy-outline" label={t("win.fromBills")} onPress={() => router.push("/wins")} testID="bills-wins" />
 
         <Section title={t("bills.budgetTitle")}>
           <Field label={t("bills.takeHome")} value={takeHome} onChangeText={setTakeHome} keyboardType="decimal-pad" hint={t("bills.takeHomeHint")} testID="take-home" />

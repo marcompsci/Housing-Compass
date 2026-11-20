@@ -74,6 +74,8 @@ export interface SideIncome {
   date: string;
   source: string;
   amountCents: number;
+  /** Hours worked for this payout, if logged. */
+  hours?: number;
 }
 export interface MileageEntry {
   id: string;
@@ -247,7 +249,7 @@ export function billChanges(txns: BankTxn[], bills: Bill[]) {
 }
 
 // ───────── Year in review ─────────
-export function yearInReview(i: { year: number; rent: RentSetup | null; payments: RentPayment[]; billPaid: Record<string, string[]>; bills: Bill[]; side: SideIncome[]; contribs: Contribution[] }) {
+export function yearInReview(i: { year: number; rent: RentSetup | null; payments: RentPayment[]; billPaid: Record<string, string[]>; bills: Bill[]; side: SideIncome[]; contribs: Contribution[]; expenses?: Array<{ date: string; amountCents: number }>; wins?: Array<{ date: string; result: string; monthlySavingsCents: number; oneTimeCents: number }> }) {
   const y = String(i.year);
   const pays = i.payments.filter((p) => p.paidOn.startsWith(y));
   const rentPaid = pays.reduce((s, p) => s + p.amountCents, 0);
@@ -257,6 +259,9 @@ export function yearInReview(i: { year: number; rent: RentSetup | null; payments
   const billsChecked = Object.values(i.billPaid).reduce((s, ms) => s + ms.filter((m) => m.startsWith(y)).length, 0);
   const side = i.side.filter((x) => x.date.startsWith(y)).reduce((s, x) => s + x.amountCents, 0);
   const saved = i.contribs.filter((c) => c.date.startsWith(y)).reduce((s, c) => s + c.amountCents, 0);
+  const expenses = (i.expenses ?? []).filter((x) => x.date.startsWith(y)).reduce((s, x) => s + x.amountCents, 0);
+  const won = (i.wins ?? []).filter((w) => w.date.startsWith(y) && (w.result === "lower" || w.result === "credit"));
+  const winsCents = won.reduce((s, w) => s + w.oneTimeCents + w.monthlySavingsCents * Math.max(1, 13 - Number(w.date.slice(5, 7))), 0);
   const text = [
     `MY ${y} IN MONEY — Housing Compass`,
     "",
@@ -265,8 +270,10 @@ export function yearInReview(i: { year: number; rent: RentSetup | null; payments
     `Bills checked off: ${billsChecked}`,
     `Side income: ${usd(side)}`,
     `Added to savings goals: ${usd(saved)}`,
+    ...(expenses ? [`Side-work expenses: ${usd(expenses)}`] : []),
+    ...(won.length ? [`Saved by asking for lower bills: ${usd(winsCents)} (${won.length} win${won.length === 1 ? "" : "s"})`] : []),
     "",
     "From my own records on my phone.",
   ].join("\n");
-  return { rentPaidCents: rentPaid, months, onTimeMonths: onTime, lateFeesCents: lateFees, billsChecked, sideIncomeCents: side, savedCents: saved, text };
+  return { rentPaidCents: rentPaid, months, onTimeMonths: onTime, lateFeesCents: lateFees, billsChecked, sideIncomeCents: side, savedCents: saved, sideExpensesCents: expenses, winsCents, wins: won.length, text };
 }

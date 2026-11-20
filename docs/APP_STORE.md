@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.20). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.21). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -47,12 +47,24 @@ GET OUT OF DEBT AND BUILD CREDIT
 • Find money you may be owed: unclaimed property, tax credits and bill discounts from official programs.
 • See what an extra payment each month saves in time and interest.
 
+KNOW WHAT'S SAFE TO SPEND
+• See what's safe to spend today after everything due before payday, and what's due this week.
+• See each bill in hours of work.
+
 EARN MORE AND KEEP MORE
 • Track gig and side income, log business miles at the IRS rate, and set aside money for taxes — with the quarterly due dates.
 • Plan for yearly costs like car registration and renters insurance with a monthly amount.
 • Check a rent increase against San Francisco, Oakland, Berkeley and Los Angeles rent-control limits and the 2026–27 statewide cap.
 • See whether your city requires interest on your security deposit.
+• Track side-work expenses and your real pay per hour, and set a monthly side-income goal.
+• Log calls asking for lower bills and see what they save over a year.
+• Keep a who-owes-whom list with roommates and write a "your share" message.
 • Get a "my year in money" summary from your own records.
+
+TRACK YOUR CREDIT
+• Know when each free weekly credit report can be checked again (AnnualCreditReport.com).
+• Track hard inquiries and disputes, with the bureau's response date.
+• Pay before your card's statement closes, and clear a promo rate before it ends.
 • Ask your landlord to report on-time rent, or ask for a payment plan, with ready-made letters.
 
 PROTECT YOUR DEPOSIT

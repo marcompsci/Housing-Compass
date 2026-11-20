@@ -27,7 +27,7 @@ function YearReview() {
   const r = useRenter();
   const thisYear = now().getUTCFullYear();
   const [year, setYear] = useState(thisYear);
-  const y = yearInReview({ year, rent: r.rentSetup, payments: r.payments, billPaid: r.billPaid, bills: r.bills, side: r.sideIncome, contribs: r.contribs });
+  const y = yearInReview({ year, rent: r.rentSetup, payments: r.payments, billPaid: r.billPaid, bills: r.bills, side: r.sideIncome, contribs: r.contribs, expenses: r.sideExpenses, wins: r.negotiations });
   const empty = !y.months && !y.billsChecked && !y.sideIncomeCents && !y.savedCents;
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="year-review">
@@ -49,6 +49,8 @@ function YearReview() {
           <KV k={t("yir.bills")} v={String(y.billsChecked)} />
           <KV k={t("yir.side")} v={usd(y.sideIncomeCents)} />
           <KV k={t("yir.saved")} v={usd(y.savedCents)} />
+          {y.sideExpensesCents ? <KV k={t("yir.expenses")} v={usd(y.sideExpensesCents)} /> : null}
+          {y.wins ? <KV k={t("yir.wins", { n: y.wins })} v={usd(y.winsCents)} /> : null}
           {y.months && y.onTimeMonths === y.months ? <Text style={[type.body, { color: color.verified, fontWeight: "800" }]}>{t("yir.perfect")}</Text> : null}
         </View>
       )}

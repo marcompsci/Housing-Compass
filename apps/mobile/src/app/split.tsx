@@ -3,6 +3,7 @@
  * Nothing is saved; names stay on screen only.
  */
 import { splitByShares } from "@housing-compass/core";
+import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, usd } from "../components/forms";
@@ -56,6 +57,7 @@ export default function Split() {
           <Text style={type.tiny}>{t("split.exact")}</Text>
         </View>
       ) : null}
+      <Button kind="secondary" icon="people-circle-outline" label={t("rm.fromSplit")} onPress={() => router.push("/roommates")} testID="split-roommates" />
       <Text style={type.tiny}>{t("split.footer")}</Text>
     </ScrollView>
   );

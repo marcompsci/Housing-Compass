@@ -3,12 +3,13 @@
  * and compare avalanche (highest rate first, least interest) with snowball (smallest balance
  * first, quickest wins). Device-only. General information, not financial advice.
  */
-import { extraPaymentImpact, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
+import { extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
 import { now } from "../config";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, usd } from "../components/forms";
-import { Banner, Button, Icon, KV, Section, Tag } from "../components/ui";
+import { Banner, Button, Chip, Icon, KV, Section, Tag } from "../components/ui";
+import { DebtTiming } from "../components/DebtTiming";
 import { useT } from "../i18n";
 import { LockGate } from "../lib/lock";
 import { useRenter } from "../state/renter";
@@ -33,6 +34,7 @@ function DebtsScreen() {
   const [min, setMin] = useState("");
   const [extra, setExtra] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [byMonths, setByMonths] = useState(24);
   const extraC = Math.max(0, toCents(extra) || 0);
   const av = debts.length ? payoffPlan(debts, extraC, "avalanche") : null;
   const sn = debts.length ? payoffPlan(debts, extraC, "snowball") : null;
@@ -53,6 +55,7 @@ function DebtsScreen() {
                 {d.name} · {usd(d.balanceCents)}
               </Text>
               <Text style={type.tiny}>{t("debt.line", { apr: d.apr, min: usd(d.minPaymentCents) })}</Text>
+              <DebtTiming debt={d} />
             </View>
             <Pressable onPress={() => remove(d.id)} accessibilityRole="button" accessibilityLabel={t("bills.remove", { name: d.name })} hitSlop={10}>
               <Icon name="trash-outline" tint={color.muted} />
@@ -127,6 +130,23 @@ function DebtsScreen() {
           ) : null}
           {av.feasible && sn.feasible && sn.totalInterestCents > av.totalInterestCents ? <Tag label={t("debt.saves", { amount: usd(sn.totalInterestCents - av.totalInterestCents) })} tone="good" /> : null}
           {!av.feasible ? <Text style={[type.small, { color: color.danger, fontWeight: "700" }]}>{t("debt.infeasible")}</Text> : null}
+        </Section>
+      ) : null}
+      {debts.length ? (
+        <Section title={t("pf.title")}>
+          <Text style={type.small}>{t("pf.body")}</Text>
+          <View style={formStyles.row}>
+            {[12, 24, 36].map((m) => (
+              <Chip key={m} label={t("money.months", { n: m })} selected={byMonths === m} onPress={() => setByMonths(m)} />
+            ))}
+          </View>
+          <View testID="payoff-by">
+            {debts.map((d) => {
+              const p = paymentForMonths(d.balanceCents, d.apr, byMonths);
+              return <KV key={d.id} k={d.name} v={t("pf.line", { amount: usd(p.perMonthCents), interest: usd(p.totalInterestCents) })} />;
+            })}
+            <KV k={t("pf.total")} v={usd(debts.reduce((s, d) => s + paymentForMonths(d.balanceCents, d.apr, byMonths).perMonthCents, 0))} strong />
+          </View>
         </Section>
       ) : null}
       <Text style={type.tiny}>{t("debt.footer")}</Text>

@@ -47,3 +47,4 @@ export * from "./bills";
 export * from "./money";
 export * from "./insights";
 export * from "./earn";
+export * from "./assist";

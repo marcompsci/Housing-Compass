@@ -1,4 +1,48 @@
-# Status report — v0.20 (2026-11-20): 20 more phases — earn more, keep more, never get surprised
+# Status report — v0.21 (2026-11-20): 30 more phases — know what's safe to spend, track your credit, get paid what your time is worth
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Safe to spend | Today's balance minus everything due before the next payday; per-day amount, or the shortfall. | `core/assist.ts` `safeToSpend`; Money → Today |
+| 2 | Week ahead | Rent and bills due in the next 7 days with a total. | `weekAhead` |
+| 3 | All-bills-paid streak | Months in a row with every bill checked off. | `allPaidStreak` |
+| 4 | Today card | New top section of the money hub. | `/money` |
+| 5 | Side-work expenses | Phone & data, supplies, platform fees, other; warns not to double-count car costs with the mileage rate. | `SideExpense`; Side income |
+| 6 | Profit-based set-aside | Tax set-aside now on profit after mileage and expenses. | `sideProfit` |
+| 7 | Real hourly pay | Optional hours per payout; pay per hour before and after costs. | `sideProfit` |
+| 8 | Monthly side goal | Progress bar, amount left and per day. | `sideGoalProgress` |
+| 9 | Fuller export | Expenses included in the side-income CSV. | Side income |
+| 10 | Translated tax labels | Quarterly payment labels now in all three languages (BACKLOG #33). | Side income |
+| 11 | Bill wins log | Company, what you asked, result (lowered / credit / no / waiting), monthly and one-time savings. | `/wins` |
+| 12 | Savings won | Next-12-month savings including subscriptions marked to cancel; win rate. | `savingsWon` |
+| 13 | Free report checks | Per bureau: last checked and when the free weekly report is available again; official site only. | `reportCheckStatus`; `/credit-tools` |
+| 14 | Hard inquiries | When each stops counting for FICO (1 year) and leaves the report (2 years). | `inquiryStatus` |
+| 15 | Disputes | Bureau, item, sent date, 30-day response date, late flag, FTC guide. | `disputeStatus` |
+| 16 | Statement timing | Card statement-closing day → "pay by" 2 days earlier. | `statementTiming`; Debt payoff |
+| 17 | Promo rates | Monthly amount to clear a card before its promo rate ends. | `promoPlan` |
+| 18 | Pay off by a date | Fixed payment per debt for 12/24/36 months, with interest. | `paymentForMonths` |
+| 19 | Credit in My plan | Report check available, dispute due/late, pay before close, promo ending. | `creditPlanItems` |
+| 20 | Roommate balances | Who owes whom, net per person, settle up. | `iouBalances`; `/roommates` |
+| 21 | "Your share" message | Polite message with share, total, due date and how to pay; sent only by the user. | `shareMessage` |
+| 22 | Bills in work hours | Hourly pay setting; every bill shows hours of work. | `hoursToCover`; Bills & budget |
+| 23 | Rent in work hours | Hours of work per month for rent. | Bills & budget |
+| 24 | Shut-off scam warning | Utilities don't demand gift cards, crypto or payment apps. | Bills & budget |
+| 25 | New links | Money hub: bill wins, credit tracker, roommates; Credit builder → tracker; Split → roommates; Plan tab → tracker. | |
+| 26 | Year in review | Adds side-work expenses and money saved by asking. | `yearInReview` |
+| 27 | Backup & restore | All new records in the strict backup schema. | `RenterBackupSchema` |
+| 28 | Privacy | New records in "Download my data" and "Clear this device"; Face ID lock on the new screens. | `lib/myData.ts`, `LockGate` |
+| 29 | Translations | 141 new strings in English, Spanish and Simplified Chinese. | `strings.ts` |
+| 30 | Tests | 16 new core tests; 15 new browser checks. | `test/v021.test.ts`, e2e |
+
+### Tests (all passing)
+- Core: 243 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 159 checks, screenshots 68–72
+
+Still blocked on the owner: merge, iPhone install, re-verify the 76 expired research leads, Supabase keys, data agreements, `eas init`, counsel and native-speaker review, App Store URLs and screenshots.
+
+---
+
+## Previous: v0.20 (2026-11-20): 20 more phases — earn more, keep more, never get surprised
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

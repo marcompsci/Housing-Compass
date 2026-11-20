@@ -34,6 +34,7 @@ export default function Credit() {
       <Banner tone="info" icon="speedometer-outline" title={t("cr.title")}>
         {t("cr.intro")}
       </Banner>
+      <Button icon="shield-checkmark-outline" label={t("ct.openTracker")} onPress={() => router.push("/credit-tools")} testID="open-credit-tools" />
       <Section title={t("cr.utilTitle")}>
         <Text style={type.small}>{t("cr.utilBody")}</Text>
         {rows.map((r, i) => (

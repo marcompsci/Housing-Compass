@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Contribution, type CreditStep, type Debt, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type Contribution, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -53,6 +53,31 @@ interface RenterState {
   sideSetAsidePct: number;
   yearly: YearlyExpense[];
   contribs: Contribution[];
+  sideExpenses: SideExpense[];
+  sideGoalCents: number | null;
+  negotiations: Negotiation[];
+  reportChecks: Array<{ bureau: Bureau; date: string }>;
+  inquiries: Inquiry[];
+  disputes: Dispute[];
+  ious: Iou[];
+  hourlyCents: number | null;
+  updateDebt(id: string, p: Partial<Omit<Debt, "id">>): void;
+  addSideExpense(x: Omit<SideExpense, "id">): void;
+  removeSideExpense(id: string): void;
+  setSideGoal(c: number | null): void;
+  addNegotiation(x: Omit<Negotiation, "id">): void;
+  updateNegotiation(id: string, p: Partial<Omit<Negotiation, "id">>): void;
+  removeNegotiation(id: string): void;
+  markReportChecked(bureau: Bureau, date: string): void;
+  addInquiry(x: Omit<Inquiry, "id">): void;
+  removeInquiry(id: string): void;
+  addDispute(x: Omit<Dispute, "id" | "resolved">): void;
+  resolveDispute(id: string): void;
+  removeDispute(id: string): void;
+  addIou(x: Omit<Iou, "id" | "settled">): void;
+  settlePerson(person: string): void;
+  removeIou(id: string): void;
+  setHourly(c: number | null): void;
   addSideIncome(x: Omit<SideIncome, "id">): void;
   removeSideIncome(id: string): void;
   addMileage(x: Omit<MileageEntry, "id">): void;
@@ -100,7 +125,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [] };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -148,6 +173,23 @@ export const useRenter = create<RenterState>()(
       setEmergency: (emergencyCents) => set({ emergencyCents }),
       setSplitPct: (splitPct) => set({ splitPct }),
       setWeeklyCheckIn: (weeklyCheckIn) => set({ weeklyCheckIn }),
+      updateDebt: (id, p) => set({ debts: get().debts.map((d) => (d.id === id ? { ...d, ...p } : d)) }),
+      addSideExpense: (x) => set({ sideExpenses: [{ ...x, id: uuid() }, ...get().sideExpenses].slice(0, 5000) }),
+      removeSideExpense: (id) => set({ sideExpenses: get().sideExpenses.filter((x) => x.id !== id) }),
+      setSideGoal: (sideGoalCents) => set({ sideGoalCents }),
+      addNegotiation: (x) => set({ negotiations: [{ ...x, id: uuid() }, ...get().negotiations].slice(0, 500) }),
+      updateNegotiation: (id, p) => set({ negotiations: get().negotiations.map((x) => (x.id === id ? { ...x, ...p } : x)) }),
+      removeNegotiation: (id) => set({ negotiations: get().negotiations.filter((x) => x.id !== id) }),
+      markReportChecked: (bureau, date) => set({ reportChecks: [...get().reportChecks, { bureau, date }].slice(-2000) }),
+      addInquiry: (x) => set({ inquiries: [{ ...x, id: uuid() }, ...get().inquiries].slice(0, 200) }),
+      removeInquiry: (id) => set({ inquiries: get().inquiries.filter((x) => x.id !== id) }),
+      addDispute: (x) => set({ disputes: [{ ...x, id: uuid(), resolved: false }, ...get().disputes].slice(0, 200) }),
+      resolveDispute: (id) => set({ disputes: get().disputes.map((x) => (x.id === id ? { ...x, resolved: true } : x)) }),
+      removeDispute: (id) => set({ disputes: get().disputes.filter((x) => x.id !== id) }),
+      addIou: (x) => set({ ious: [{ ...x, id: uuid(), settled: false }, ...get().ious].slice(0, 2000) }),
+      settlePerson: (person) => set({ ious: get().ious.map((x) => (x.person === person ? { ...x, settled: true } : x)) }),
+      removeIou: (id) => set({ ious: get().ious.filter((x) => x.id !== id) }),
+      setHourly: (hourlyCents) => set({ hourlyCents }),
       addSideIncome: (x) => set({ sideIncome: [{ ...x, id: uuid() }, ...get().sideIncome].slice(0, 5000) }),
       removeSideIncome: (id) => set({ sideIncome: get().sideIncome.filter((x) => x.id !== id) }),
       addMileage: (x) => set({ mileage: [{ ...x, id: uuid() }, ...get().mileage].slice(0, 5000) }),
@@ -185,6 +227,14 @@ export const useRenter = create<RenterState>()(
           sideSetAsidePct: b.data.sideSetAsidePct ?? 25,
           yearly: b.data.yearly ?? [],
           contribs: b.data.contribs ?? [],
+          sideExpenses: b.data.sideExpenses ?? [],
+          sideGoalCents: b.data.sideGoalCents ?? null,
+          negotiations: b.data.negotiations ?? [],
+          reportChecks: b.data.reportChecks ?? [],
+          inquiries: b.data.inquiries ?? [],
+          disputes: b.data.disputes ?? [],
+          ious: b.data.ious ?? [],
+          hourlyCents: b.data.hourlyCents ?? null,
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

@@ -3,7 +3,7 @@
  * set-aside and the quarterly estimated-tax due dates. Device-only. General information,
  * not tax advice.
  */
-import { estimatedTaxDates, IRS_MILEAGE_RATES, mileageRateFor, sideIncomeSummary } from "@housing-compass/core";
+import { estimatedTaxDates, EXPENSE_CATEGORIES, IRS_MILEAGE_RATES, mileageRateFor, sideGoalProgress, sideIncomeSummary, sideProfit, type ExpenseCategory } from "@housing-compass/core";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today, usd } from "../components/forms";
@@ -33,6 +33,13 @@ function SideIncomeScreen() {
   const r = useRenter();
   const n = now();
   const s = sideIncomeSummary(r.sideIncome, r.mileage, r.sideSetAsidePct, n);
+  const pr = sideProfit({ income: r.sideIncome, miles: r.mileage, expenses: r.sideExpenses, setAsidePct: r.sideSetAsidePct, now: n });
+  const goal = sideGoalProgress(r.sideIncome, r.sideGoalCents, n);
+  const [hours, setHours] = useState("");
+  const [goalText, setGoalText] = useState(r.sideGoalCents ? String(r.sideGoalCents / 100) : "");
+  const [eCat, setECat] = useState<ExpenseCategory>("phone");
+  const [eAmt, setEAmt] = useState("");
+  const [eNote, setENote] = useState("");
   const [date, setDate] = useState(today(n));
   const [source, setSource] = useState("");
   const [amount, setAmount] = useState("");
@@ -50,6 +57,7 @@ function SideIncomeScreen() {
       "type,date,source_or_purpose,amount_usd,miles,irs_rate_cents",
       ...r.sideIncome.map((x) => ["income", x.date, csvCell(x.source), (x.amountCents / 100).toFixed(2), "", ""].join(",")),
       ...r.mileage.map((m) => ["mileage", m.date, csvCell(m.purpose), "", String(m.miles), String(mileageRateFor(m.date) ?? "")].join(",")),
+      ...r.sideExpenses.map((x) => ["expense", x.date, csvCell(`${x.category}${x.note ? `: ${x.note}` : ""}`), (x.amountCents / 100).toFixed(2), "", ""].join(",")),
     ];
     void saveAndShare(`side-income-${today(n)}.csv`, rows.join("\n"), "text/csv", "public.comma-separated-values-text");
   };
@@ -75,9 +83,42 @@ function SideIncomeScreen() {
         </View>
         <View style={[styles.tile, { backgroundColor: color.warnSoft }]}>
           <Text style={type.tiny}>{t("side.setAside", { pct: r.sideSetAsidePct })}</Text>
-          <Text style={type.h2} testID="side-setaside">{usd(s.setAsideYearCents)}</Text>
+          <Text style={type.h2} testID="side-setaside">{usd(pr.setAsideCents)}</Text>
         </View>
+        {pr.expensesCents ? (
+          <View style={styles.tile}>
+            <Text style={type.tiny}>{t("side.expensesTile")}</Text>
+            <Text style={type.h2} testID="side-expenses">{usd(pr.expensesCents)}</Text>
+          </View>
+        ) : null}
+        {pr.netHourlyCents !== null ? (
+          <View style={styles.tile}>
+            <Text style={type.tiny}>{t("side.hourly", { hours: pr.hours })}</Text>
+            <Text style={type.h2} testID="side-hourly">{usd(pr.netHourlyCents)}/h</Text>
+            <Text style={type.tiny}>{t("side.hourlyGross", { amount: usd(pr.grossHourlyCents ?? 0) })}</Text>
+          </View>
+        ) : null}
       </View>
+
+      <Section title={t("side.goalTitle")}>
+        {goal.goalCents ? (
+          <View style={{ gap: 4 }} testID="side-goal">
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${Math.round((goal.progress ?? 0) * 100)}%` }]} />
+            </View>
+            <Text style={[type.small, { fontWeight: "700" }]}>{t("side.goalLine", { earned: usd(goal.earnedCents), goal: usd(goal.goalCents) })}</Text>
+            <Text style={type.tiny}>{goal.leftCents ? t("side.goalLeft", { left: usd(goal.leftCents), day: usd(goal.perDayCents ?? 0) }) : t("side.goalHit")}</Text>
+          </View>
+        ) : (
+          <Text style={type.small}>{t("side.goalBody")}</Text>
+        )}
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <Field label={t("side.goalField")} value={goalText} onChangeText={setGoalText} keyboardType="decimal-pad" testID="side-goal-input" />
+          </View>
+          <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => r.setSideGoal(toCents(goalText) > 0 ? toCents(goalText) : null)} testID="side-goal-save" />
+        </View>
+      </Section>
 
       <Section title={t("side.taxTitle")}>
         <Text style={type.small}>{t("side.taxBody")}</Text>
@@ -88,7 +129,7 @@ function SideIncomeScreen() {
         </View>
         <Text style={[type.small, { fontWeight: "700" }]}>{t("side.datesTitle")}</Text>
         {dates.map((d) => (
-          <KV key={d.due} k={t("side.quarter", { q: d.quarter, covers: d.covers })} v={d.due} />
+          <KV key={d.due} k={t("side.quarterN", { q: d.quarter })} v={d.due} />
         ))}
         <Button kind="ghost" icon="open-outline" label="IRS Form 1040-ES ↗" onPress={() => openExternal(ES_URL)} />
       </Section>
@@ -109,6 +150,9 @@ function SideIncomeScreen() {
           <View style={{ flex: 1, minWidth: 140 }}>
             <Field label={t("side.date")} value={date} onChangeText={setDate} autoCapitalize="none" testID="side-date" />
           </View>
+          <View style={{ flex: 1, minWidth: 100 }}>
+            <Field label={t("side.hours")} value={hours} onChangeText={setHours} keyboardType="decimal-pad" testID="side-hours" />
+          </View>
         </View>
         <Button
           icon="add-circle-outline"
@@ -117,8 +161,10 @@ function SideIncomeScreen() {
           onPress={() => {
             const c = toCents(amount);
             if (source.trim().length < 2 || !(c > 0) || !isDate(date)) return setErr(t("side.err"));
-            r.addSideIncome({ date, source: source.trim().slice(0, 60), amountCents: c });
+            const h = Number(hours.replace(",", "."));
+            r.addSideIncome({ date, source: source.trim().slice(0, 60), amountCents: c, ...(hours.trim() && h > 0 && h <= 744 ? { hours: Math.round(h * 10) / 10 } : {}) });
             setAmount("");
+            setHours("");
             setErr(null);
           }}
         />
@@ -149,6 +195,48 @@ function SideIncomeScreen() {
           }}
         />
         <Text style={type.tiny}>{t("side.milesNote")}</Text>
+      </Section>
+      <Section title={t("side.expTitle")}>
+        <Text style={type.small}>{t("side.expBody")}</Text>
+        <View style={formStyles.row}>
+          {EXPENSE_CATEGORIES.map((c) => (
+            <Chip key={c} label={t(`side.exp.${c}`)} selected={eCat === c} onPress={() => setECat(c)} />
+          ))}
+        </View>
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 120 }}>
+            <Field label={t("side.amount")} value={eAmt} onChangeText={setEAmt} keyboardType="decimal-pad" testID="side-exp-amount" />
+          </View>
+          <View style={{ flex: 2, minWidth: 160 }}>
+            <Field label={t("side.expNote")} value={eNote} onChangeText={setENote} testID="side-exp-note" />
+          </View>
+        </View>
+        <Button
+          kind="secondary"
+          icon="receipt-outline"
+          label={t("side.expAdd")}
+          testID="side-exp-add"
+          onPress={() => {
+            const c = toCents(eAmt);
+            if (!(c > 0)) return setErr(t("side.err"));
+            r.addSideExpense({ date: today(n), category: eCat, amountCents: c, note: eNote.trim().slice(0, 80) });
+            setEAmt("");
+            setENote("");
+            setErr(null);
+          }}
+        />
+        {r.sideExpenses.slice(0, 10).map((x) => (
+          <View key={x.id} style={styles.row} testID="side-exp-row">
+            <Text style={[type.small, { flex: 1 }]}>
+              {x.date} · {t(`side.exp.${x.category}`)}
+              {x.note ? ` · ${x.note}` : ""}
+            </Text>
+            <Text style={[type.small, { fontWeight: "700" }]}>{usd(x.amountCents)}</Text>
+            <Pressable onPress={() => r.removeSideExpense(x.id)} accessibilityRole="button" accessibilityLabel={t("bills.remove", { name: x.note || t(`side.exp.${x.category}`) })} hitSlop={10}>
+              <Icon name="trash-outline" size={18} tint={color.muted} />
+            </Pressable>
+          </View>
+        ))}
       </Section>
       {err ? <Text style={[type.small, { color: color.danger }]}>{err}</Text> : null}
 
@@ -187,5 +275,7 @@ const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   tile: { flexGrow: 1, flexBasis: 150, padding: 12, borderRadius: radius.md, backgroundColor: color.brandSoft, gap: 2 },
+  track: { height: 10, borderRadius: radius.md, backgroundColor: color.neutralSoft, overflow: "hidden" },
+  fill: { height: "100%", backgroundColor: color.verified },
   row: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
 });

@@ -37,6 +37,14 @@
 ## Done in v0.20
 - Local allowed-increase figures per rent board (#23, #28), side income, mileage, taxes, yearly costs, deposit interest, year in review (see STATUS_REPORT)
 
+## Done in v0.21
+- Safe to spend, week ahead, side-work expenses and hourly pay, credit tracker, bill wins, roommates, card timing; #33 (quarterly labels now translated)
+
+## Next ideas (after v0.21)
+34. Optional notification the day a free credit report can be checked again
+35. Dispute letter template (with the FTC's sample as the source) in Letters
+36. Remember today's balance more easily (quick "update balance" on the Today card)
+
 ## Next ideas (after v0.20)
 30. Recheck local rent and deposit-interest figures each year (SF/LA/Oakland change in spring/summer; Berkeley each October)
 31. Add other rent-control cities with deposit-interest rules (e.g. Santa Monica, West Hollywood) from their official pages

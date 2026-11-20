@@ -65,6 +65,9 @@ export default function RootLayout() {
         <Stack.Screen name="yearly" options={{ title: "Yearly costs" }} />
         <Stack.Screen name="deposit-interest" options={{ title: "Deposit interest" }} />
         <Stack.Screen name="year-review" options={{ title: "Year in review" }} />
+        <Stack.Screen name="credit-tools" options={{ title: "Credit tracker" }} />
+        <Stack.Screen name="wins" options={{ title: "Bill wins" }} />
+        <Stack.Screen name="roommates" options={{ title: "Roommates" }} />
         <Stack.Screen name="split" options={{ title: "Split with roommates" }} />
         <Stack.Screen name="backup" options={{ title: "Backup & restore" }} />
         <Stack.Screen name="setup" options={{ title: "Quick setup" }} />

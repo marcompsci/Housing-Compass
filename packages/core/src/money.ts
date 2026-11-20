@@ -287,6 +287,10 @@ export interface Debt {
   /** Annual percentage rate, e.g. 24.99 */
   apr: number;
   minPaymentCents: number;
+  /** Day of the month the card's statement closes (1–31), if the user knows it. */
+  statementDay?: number;
+  /** Promotional (e.g. 0%) rate end date, YYYY-MM-DD. */
+  promoEnds?: string;
 }
 
 export interface PayoffResult {
@@ -452,13 +456,21 @@ export const RenterBackupSchema = z.object({
     takeHomeCents: cents.nullable(),
     waitlists: z.array(z.object({ id: shortText(64), programName: shortText(100), joinedOn: day, confirmation: shortText(60), nextCheckIn: day.nullable(), status: z.enum(["waiting", "invited", "closed"]), notes: shortText(500) })).max(50),
     pay: z.object({ frequency: z.enum(["weekly", "biweekly", "semimonthly", "monthly"]), amountCents: cents, anchorDate: day }).nullable(),
-    debts: z.array(z.object({ id: shortText(64), name: shortText(60), balanceCents: cents, apr: z.number().min(0).max(100), minPaymentCents: cents })).max(50),
+    debts: z.array(z.object({ id: shortText(64), name: shortText(60), balanceCents: cents, apr: z.number().min(0).max(100), minPaymentCents: cents, statementDay: z.number().int().min(1).max(31).optional(), promoEnds: day.optional() })).max(50),
     goals: z.array(z.object({ id: shortText(64), name: shortText(60), targetCents: cents, savedCents: cents, targetDate: day.nullable() })).max(30),
     unusedSubs: z.array(shortText(64)).max(100),
     creditDone: z.array(z.enum(CREDIT_CHECKLIST)).max(20),
     emergencyCents: cents.nullable().optional(),
     splitPct: z.object({ goals: z.number().min(0).max(100), debt: z.number().min(0).max(100) }).optional(),
-    sideIncome: z.array(z.object({ id: shortText(64), date: day, source: shortText(60), amountCents: cents })).max(5000).optional(),
+    sideIncome: z.array(z.object({ id: shortText(64), date: day, source: shortText(60), amountCents: cents, hours: z.number().min(0).max(24 * 31).optional() })).max(5000).optional(),
+    sideExpenses: z.array(z.object({ id: shortText(64), date: day, category: z.enum(["phone", "supplies", "fees", "other"]), amountCents: cents, note: shortText(80) })).max(5000).optional(),
+    sideGoalCents: cents.nullable().optional(),
+    negotiations: z.array(z.object({ id: shortText(64), date: day, company: shortText(60), ask: shortText(120), result: z.enum(["lower", "credit", "no", "pending"]), monthlySavingsCents: cents, oneTimeCents: cents })).max(500).optional(),
+    reportChecks: z.array(z.object({ bureau: z.enum(["equifax", "experian", "transunion"]), date: day })).max(2000).optional(),
+    inquiries: z.array(z.object({ id: shortText(64), date: day, lender: shortText(60) })).max(200).optional(),
+    disputes: z.array(z.object({ id: shortText(64), bureau: z.enum(["equifax", "experian", "transunion"]), item: shortText(120), sentOn: day, resolved: z.boolean() })).max(200).optional(),
+    ious: z.array(z.object({ id: shortText(64), date: day, person: shortText(40), amountCents: z.number().int().min(-100_000_000).max(100_000_000), note: shortText(80), settled: z.boolean() })).max(2000).optional(),
+    hourlyCents: cents.nullable().optional(),
     mileage: z.array(z.object({ id: shortText(64), date: day, miles: z.number().min(0).max(5000), purpose: shortText(80) })).max(5000).optional(),
     sideSetAsidePct: z.number().min(0).max(50).optional(),
     yearly: z.array(z.object({ id: shortText(64), name: shortText(60), amountCents: cents, nextDue: day, savedCents: cents })).max(100).optional(),

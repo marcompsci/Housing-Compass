@@ -3,14 +3,14 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { CREDIT_CHECKLIST, billStatuses, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { allPaidStreak, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { formStyles, today, usd } from "../components/forms";
-import { Banner, Button, Icon, Section, Tag, type IconName } from "../components/ui";
+import { Banner, Button, Icon, Section, Tag, type IconName, KV } from "../components/ui";
 import { now } from "../config";
 import { useT } from "../i18n";
 import { LockGate } from "../lib/lock";
@@ -35,6 +35,11 @@ function MoneyScreen() {
   const next = plan?.buckets[0] ?? null;
   const fc = r.startBalanceCents !== null ? cashFlowForecast(r.startBalanceCents, r.pay, obligations, from, 30) : null;
   const debt = r.debts.length ? payoffPlan(r.debts, 0, "avalanche") : null;
+  const nextPay = r.pay ? (paydays(r.pay, from, 45).find((d) => d > from) ?? null) : null;
+  const sts = r.startBalanceCents !== null ? safeToSpend({ balanceCents: r.startBalanceCents, obligations, nextPayday: nextPay, today: from }) : null;
+  const week = weekAhead(obligations, from);
+  const allPaid = allPaidStreak(r.bills, r.billPaid, n);
+  const won = savingsWon(r.negotiations, r.bills, r.unusedSubs);
   const essentials = (r.rentSetup?.amountCents ?? 0) + r.bills.reduce((s, b) => s + b.amountCents, 0);
   const ef = emergencyFund(r.emergencyCents ?? 0, essentials);
   const [efText, setEfText] = useState(r.emergencyCents !== null ? String(r.emergencyCents / 100) : "");
@@ -70,6 +75,9 @@ function MoneyScreen() {
     { icon: "mail-outline", label: t("let.title"), sub: t("let.sub"), href: "/letters", testID: "tool-letters" },
     { icon: "file-tray-stacked-outline", label: t("yr.title"), sub: r.yearly.length ? t("yr.hubSub", { amount: usd(yearlyPlan(r.yearly, now()).monthlyTotalCents) }) : t("yr.sub"), href: "/yearly", testID: "tool-yearly" },
     { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
+    { icon: "trophy-outline", label: t("win.title"), sub: won.asked ? t("win.hubSub", { amount: usd(won.nextYearCents) }) : t("win.sub"), href: "/wins", testID: "tool-wins" },
+    { icon: "shield-checkmark-outline", label: t("ct.title"), sub: t("ct.sub"), href: "/credit-tools", testID: "tool-credit-tools" },
+    { icon: "people-circle-outline", label: t("rm.title"), sub: t("rm.sub"), href: "/roommates", testID: "tool-roommates" },
     { icon: "save-outline", label: t("money.backup"), sub: t("money.backupSub"), href: "/backup", testID: "tool-backup" },
   ];
 
@@ -81,6 +89,22 @@ function MoneyScreen() {
         </Banner>
       ) : null}
       {!r.setupDone && !r.pay ? <Button icon="rocket-outline" label={t("money.setupStart")} onPress={() => router.push("/setup")} testID="setup-start" /> : null}
+
+      <Section title={t("today.title")}>
+        <View style={[styles.tile, { flexBasis: "auto" }, sts?.shortCents ? { backgroundColor: color.dangerSoft } : { backgroundColor: color.verifiedSoft }]} testID="safe-to-spend">
+          <Text style={type.tiny}>{t("today.safe")}</Text>
+          <Text style={[type.title, sts?.shortCents ? { color: color.danger } : null]}>{sts ? (sts.shortCents ? `-${usd(sts.shortCents)}` : usd(sts.safeCents)) : "—"}</Text>
+          <Text style={type.small}>{sts ? (sts.shortCents ? t("today.short", { date: sts.until }) : t("today.safeLine", { date: sts.until, day: usd(sts.perDayCents), n: sts.dueCount })) : t("today.needBalance")}</Text>
+        </View>
+        <Text style={[type.small, { fontWeight: "700" }]}>{week.items.length ? t("today.week", { amount: usd(week.totalCents), n: week.items.length }) : t("today.weekClear")}</Text>
+        <View testID="week-ahead">
+          {week.items.map((o) => (
+            <KV key={o.id + o.dueDate} k={`${o.dueDate === from ? t("today.today") : o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
+          ))}
+        </View>
+        {allPaid ? <Tag label={t("today.allPaid", { n: allPaid })} tone="good" /> : null}
+        <Text style={type.tiny}>{t("today.note")}</Text>
+      </Section>
 
       <Section title={t("money.snapshot")}>
         <View style={styles.tiles} testID="money-snapshot">
