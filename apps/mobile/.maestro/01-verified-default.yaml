@@ -1,0 +1,8 @@
+# Native e2e (iOS/Android dev build): maestro test apps/mobile/.maestro
+appId: com.phoronomicstudios.housingcompass
+---
+- launchApp: { clearState: true }
+- assertVisible: "Showing official & manager-verified homes only"
+- assertNotVisible: "Unverified lead"
+- tapOn: "Entire 1BR"
+- assertVisible: ".*/ unit / mo.*"
