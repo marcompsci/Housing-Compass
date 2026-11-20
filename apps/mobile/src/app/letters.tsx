@@ -3,7 +3,7 @@
  * or ask a landlord or utility for a payment plan. Made on the phone; you send it yourself.
  * General information, not legal advice.
  */
-import { paymentPlanRequest, rentReportingRequest } from "@housing-compass/core";
+import { BUREAUS, disputeLetter, paymentPlanRequest, rentReportingRequest, type Bureau } from "@housing-compass/core";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today } from "../components/forms";
@@ -30,6 +30,11 @@ export default function Letters() {
   const [reason, setReason] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const d = today(now());
+  const [bureau, setBureau] = useState<Bureau>("equifax");
+  const [mail, setMail] = useState("");
+  const [item, setItem] = useState("");
+  const [why, setWhy] = useState("");
+  const [dlErr, setDlErr] = useState<string | null>(null);
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="letters">
@@ -77,6 +82,29 @@ export default function Letters() {
         />
       </Section>
       <Text style={type.tiny}>{t("let.footer")}</Text>
+      <Section title={t("dl.title")}>
+        <Text style={type.small}>{t("dl.body")}</Text>
+        <View style={formStyles.row}>
+          {BUREAUS.map((b) => (
+            <Chip key={b} label={t(`ct.b.${b}`)} selected={bureau === b} onPress={() => setBureau(b)} />
+          ))}
+        </View>
+        <Field label={t("dl.address")} value={mail} onChangeText={setMail} />
+        <Field label={t("ct.item")} value={item} onChangeText={setItem} placeholder={t("dl.itemPh")} testID="dl-item" />
+        <Field label={t("dl.why")} value={why} onChangeText={setWhy} placeholder={t("dl.whyPh")} />
+        {dlErr ? <Text style={[type.small, { color: color.danger }]}>{dlErr}</Text> : null}
+        <Button
+          icon="document-text-outline"
+          label={t("let.make")}
+          testID="let-dl"
+          onPress={() => {
+            if (item.trim().length < 3) return setDlErr(t("dl.err"));
+            setDlErr(null);
+            void saveAndShare(`credit-dispute-${bureau}-${d}.txt`, disputeLetter({ name: name.trim(), address: mail.trim(), bureau, item: item.trim(), why: why.trim(), today: d }), "text/plain", "public.plain-text");
+          }}
+        />
+        <Text style={type.tiny}>{t("dl.note")}</Text>
+      </Section>
     </ScrollView>
   );
 }

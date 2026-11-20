@@ -40,6 +40,14 @@
 ## Done in v0.21
 - Safe to spend, week ahead, side-work expenses and hourly pay, credit tracker, bill wins, roommates, card timing; #33 (quarterly labels now translated)
 
+## Done in v0.22
+- #34 report reminder, #35 dispute letter, #36 quick balance update; plus afford check, weekly spending, windfall, score journal, bill promo watch, debt progress
+
+## Next ideas (after v0.22)
+37. Home-screen widget: safe to spend and next due date (needs a native widget extension)
+38. Pick the bank CSV file directly (document picker)
+39. Opt-in end-to-end encrypted backup
+
 ## Next ideas (after v0.21)
 34. Optional notification the day a free credit report can be checked again
 35. Dispute letter template (with the FTC's sample as the source) in Letters

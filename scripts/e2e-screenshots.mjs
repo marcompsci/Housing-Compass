@@ -964,6 +964,76 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await shot("72-work-hours");
 }
 
+// ── v0.22: balance update, can I afford this, tool search, weekly spending, windfall, score journal, dispute letter, bill promo watch, debt progress
+{
+  const iso = (d) => d.toISOString().slice(0, 10);
+  await page.goto(`${base}/money`);
+  await page.getByTestId("today-balance").fill("5000");
+  await page.getByTestId("today-balance-save").click();
+  check(/\$[\d,]+/.test(await page.getByTestId("safe-to-spend").innerText()), "balance can be updated from the Today card");
+  await page.getByTestId("tools-search").fill("score");
+  check((await page.getByTestId("tool-scores").count()) === 1 && (await page.getByTestId("tool-paycheck").count()) === 0, "money tools can be searched");
+
+  await page.goto(`${base}/afford`);
+  await page.getByTestId("aff-price").fill("20");
+  await page.getByTestId("aff-check").click();
+  check(/Yes — it fits/.test(await page.getByTestId("aff-result").innerText()), "small purchase fits");
+  await page.getByTestId("aff-price").fill("99999");
+  await page.getByTestId("aff-check").click();
+  check(/Not right now|Wait until payday/.test(await page.getByTestId("aff-result").innerText()), "large purchase flagged");
+  await shot("73-afford");
+
+  await page.goto(`${base}/spending`);
+  await page.getByTestId("sp-limit").fill("100");
+  await page.getByTestId("sp-limit-save").click();
+  await page.getByRole("button", { name: "Coffee" }).click();
+  await page.getByTestId("sp-amount").fill("30");
+  await page.getByTestId("sp-add").click();
+  await page.getByTestId("sp-row").waitFor();
+  check(/\$70 left/.test(await page.getByTestId("sp-week").innerText()), "weekly spending shows what's left");
+  check(/spent \$30 of \$100/.test(await page.getByTestId("sp-review").innerText()), "weekly review summarizes the week");
+  await shot("74-spending");
+
+  await page.goto(`${base}/windfall`);
+  await page.getByTestId("wf-amount").fill("1000");
+  await page.getByTestId("wf-plan").click();
+  check(/For you/.test(await page.getByTestId("wf-result").innerText()), "windfall split shown");
+
+  await page.goto(`${base}/scores`);
+  for (const [s, d] of [["640", "2026-09-01"], ["662", "2026-11-01"]]) {
+    await page.getByTestId("sc-score").fill(s);
+    await page.getByTestId("sc-date").fill(d);
+    await page.getByTestId("sc-source").fill("Bank app");
+    await page.getByTestId("sc-add").click();
+  }
+  check(/\+22 since your last Bank app score/.test(await page.getByTestId("sc-latest").innerText()), "score journal shows change from the same source");
+  await shot("75-scores");
+
+  await page.goto(`${base}/letters`);
+  await page.getByTestId("dl-item").fill("Acme Card ending 1234: late payment in March");
+  await page.getByTestId("let-dl").click();
+  check((await page.getByText("Describe the item you're disputing.").count()) === 0, "dispute letter can be made");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("bill-name").fill("Internet promo");
+  await page.getByTestId("bill-amount").fill("50");
+  await page.getByTestId("bill-day").fill("12");
+  await page.getByTestId("bill-promo").fill(iso(new Date(NOW.getTime() + 10 * 86_400_000)));
+  await page.getByTestId("bill-add").click();
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Promo price ends in \d+ days/).count()) >= 1, "bill promo end appears in My plan");
+  await shot("76-plan-promo");
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-timing-edit").first().click();
+  await page.getByTestId("debt-balance-update").fill("100");
+  await page.getByTestId("debt-timing-save").click();
+  await page.getByTestId("debt-progress").waitFor();
+  check(/You've paid down/.test(await page.getByTestId("debt-progress").innerText()), "debt progress against the starting balance");
+  await shot("77-debt-progress");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

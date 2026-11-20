@@ -37,6 +37,9 @@ export function makeBackup(now: Date): RenterBackup {
       disputes: r.disputes,
       ious: r.ious,
       hourlyCents: r.hourlyCents,
+      weeklyLimitCents: r.weeklyLimitCents,
+      spends: r.spends,
+      scores: r.scores,
     },
   };
 }

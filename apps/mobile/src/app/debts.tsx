@@ -3,7 +3,7 @@
  * and compare avalanche (highest rate first, least interest) with snowball (smallest balance
  * first, quickest wins). Device-only. General information, not financial advice.
  */
-import { extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
+import { debtProgress, extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
 import { now } from "../config";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -46,13 +46,22 @@ function DebtsScreen() {
       <Banner tone="info" icon="trending-down-outline" title={t("debt.title")}>
         {t("debt.intro")}
       </Banner>
+      {debts.length && debtProgress(debts).paidCents > 0 ? (
+        <View style={formStyles.card} testID="debt-progress">
+          <Text style={type.h3}>{t("dp.title", { amount: usd(debtProgress(debts).paidCents), pct: debtProgress(debts).pct })}</Text>
+          <View style={{ height: 10, borderRadius: 8, backgroundColor: color.neutralSoft, overflow: "hidden" }}>
+            <View style={{ height: "100%", width: `${debtProgress(debts).pct}%`, backgroundColor: color.verified }} />
+          </View>
+          {debtProgress(debts).paidOff ? <Tag label={t("dp.paidOff", { n: debtProgress(debts).paidOff })} tone="good" /> : null}
+        </View>
+      ) : null}
       <Section title={t("debt.list")}>
         {debts.length === 0 ? <Text style={type.small}>{t("debt.none")}</Text> : null}
         {debts.map((d) => (
           <View key={d.id} style={styles.row} testID="debt-row">
             <View style={{ flex: 1 }}>
               <Text style={type.h3}>
-                {d.name} · {usd(d.balanceCents)}
+                {d.name} · {d.balanceCents === 0 ? `🎉 ${t("dp.done")}` : usd(d.balanceCents)}
               </Text>
               <Text style={type.tiny}>{t("debt.line", { apr: d.apr, min: usd(d.minPaymentCents) })}</Text>
               <DebtTiming debt={d} />

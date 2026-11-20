@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type Contribution, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type Contribution, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -61,6 +61,14 @@ interface RenterState {
   disputes: Dispute[];
   ious: Iou[];
   hourlyCents: number | null;
+  weeklyLimitCents: number | null;
+  spends: Spend[];
+  scores: ScoreEntry[];
+  setWeeklyLimit(c: number | null): void;
+  addSpend(x: Omit<Spend, "id">): void;
+  removeSpend(id: string): void;
+  addScore(x: Omit<ScoreEntry, "id">): void;
+  removeScore(id: string): void;
   updateDebt(id: string, p: Partial<Omit<Debt, "id">>): void;
   addSideExpense(x: Omit<SideExpense, "id">): void;
   removeSideExpense(id: string): void;
@@ -125,7 +133,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [] };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -162,7 +170,12 @@ export const useRenter = create<RenterState>()(
       setLockOn: (lockOn) => set({ lockOn }),
       setPay: (pay) => set({ pay }),
       setStartBalance: (startBalanceCents) => set({ startBalanceCents }),
-      addDebt: (d) => set({ debts: [...get().debts, { ...d, id: uuid() }] }),
+      addDebt: (d) => set({ debts: [...get().debts, { ...d, startBalanceCents: d.startBalanceCents ?? d.balanceCents, id: uuid() }] }),
+      setWeeklyLimit: (weeklyLimitCents) => set({ weeklyLimitCents }),
+      addSpend: (x) => set({ spends: [{ ...x, id: uuid() }, ...get().spends].slice(0, 5000) }),
+      removeSpend: (id) => set({ spends: get().spends.filter((x) => x.id !== id) }),
+      addScore: (x) => set({ scores: [...get().scores, { ...x, id: uuid() }].slice(-500) }),
+      removeScore: (id) => set({ scores: get().scores.filter((x) => x.id !== id) }),
       removeDebt: (id) => set({ debts: get().debts.filter((d) => d.id !== id) }),
       addGoal: (g) => set({ goals: [...get().goals, { ...g, id: uuid() }] }),
       updateGoal: (id, p) => set({ goals: get().goals.map((g) => (g.id === id ? { ...g, ...p } : g)) }),
@@ -235,6 +248,9 @@ export const useRenter = create<RenterState>()(
           disputes: b.data.disputes ?? [],
           ious: b.data.ious ?? [],
           hourlyCents: b.data.hourlyCents ?? null,
+          weeklyLimitCents: b.data.weeklyLimitCents ?? null,
+          spends: b.data.spends ?? [],
+          scores: b.data.scores ?? [],
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

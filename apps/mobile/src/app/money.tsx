@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { allPaidStreak, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { allPaidStreak, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -39,6 +39,9 @@ function MoneyScreen() {
   const sts = r.startBalanceCents !== null ? safeToSpend({ balanceCents: r.startBalanceCents, obligations, nextPayday: nextPay, today: from }) : null;
   const week = weekAhead(obligations, from);
   const allPaid = allPaidStreak(r.bills, r.billPaid, n);
+  const [bal, setBal] = useState(r.startBalanceCents !== null ? String(r.startBalanceCents / 100) : "");
+  const [q, setQ] = useState("");
+  const wk = weekSpending(r.spends, r.weeklyLimitCents, from);
   const won = savingsWon(r.negotiations, r.bills, r.unusedSubs);
   const essentials = (r.rentSetup?.amountCents ?? 0) + r.bills.reduce((s, b) => s + b.amountCents, 0);
   const ef = emergencyFund(r.emergencyCents ?? 0, essentials);
@@ -75,6 +78,10 @@ function MoneyScreen() {
     { icon: "mail-outline", label: t("let.title"), sub: t("let.sub"), href: "/letters", testID: "tool-letters" },
     { icon: "file-tray-stacked-outline", label: t("yr.title"), sub: r.yearly.length ? t("yr.hubSub", { amount: usd(yearlyPlan(r.yearly, now()).monthlyTotalCents) }) : t("yr.sub"), href: "/yearly", testID: "tool-yearly" },
     { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
+    { icon: "cart-outline", label: t("sp.title"), sub: t("sp.sub"), href: "/spending", testID: "tool-spending" },
+    { icon: "help-circle-outline", label: t("aff.title"), sub: t("aff.sub"), href: "/afford", testID: "tool-afford" },
+    { icon: "sparkles-outline", label: t("wf.title"), sub: t("wf.sub"), href: "/windfall", testID: "tool-windfall" },
+    { icon: "analytics-outline", label: t("sc.title"), sub: t("sc.sub"), href: "/scores", testID: "tool-scores" },
     { icon: "trophy-outline", label: t("win.title"), sub: won.asked ? t("win.hubSub", { amount: usd(won.nextYearCents) }) : t("win.sub"), href: "/wins", testID: "tool-wins" },
     { icon: "shield-checkmark-outline", label: t("ct.title"), sub: t("ct.sub"), href: "/credit-tools", testID: "tool-credit-tools" },
     { icon: "people-circle-outline", label: t("rm.title"), sub: t("rm.sub"), href: "/roommates", testID: "tool-roommates" },
@@ -101,6 +108,16 @@ function MoneyScreen() {
           {week.items.map((o) => (
             <KV key={o.id + o.dueDate} k={`${o.dueDate === from ? t("today.today") : o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
           ))}
+        </View>
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 150 }}>
+            <Field label={t("today.balance")} value={bal} onChangeText={setBal} keyboardType="decimal-pad" testID="today-balance" />
+          </View>
+          <Button kind="secondary" label={t("today.update")} onPress={() => { const c = Number(bal.replace(/[$,\s]/g, "")); if (bal.trim() && Number.isFinite(c)) r.setStartBalance(Math.round(c * 100)); }} testID="today-balance-save" />
+        </View>
+        <View style={formStyles.row}>
+          <Button style={{ flex: 1 }} icon="help-circle-outline" label={t("aff.title")} onPress={() => router.push("/afford")} testID="today-afford" />
+          <Button style={{ flex: 1 }} kind="secondary" icon="cart-outline" label={r.weeklyLimitCents ? t("today.spendLeft", { amount: usd(wk.leftCents ?? 0) }) : t("sp.title")} onPress={() => router.push("/spending")} testID="today-spending" />
         </View>
         {allPaid ? <Tag label={t("today.allPaid", { n: allPaid })} tone="good" /> : null}
         <Text style={type.tiny}>{t("today.note")}</Text>
@@ -192,7 +209,8 @@ function MoneyScreen() {
       </Section>
 
       <Section title={t("money.tools")}>
-        {tools.map((x) => (
+        <Field label={t("tools.search")} value={q} onChangeText={setQ} autoCapitalize="none" testID="tools-search" />
+        {tools.filter((x) => !q.trim() || `${x.label} ${x.sub}`.toLowerCase().includes(q.trim().toLowerCase())).map((x) => (
           <Pressable key={x.href} onPress={() => router.push(x.href as never)} accessibilityRole="button" style={styles.item} testID={x.testID}>
             <View style={styles.iconBox}>
               <Icon name={x.icon} size={20} tint={color.brand} />

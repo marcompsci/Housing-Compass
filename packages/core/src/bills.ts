@@ -27,6 +27,8 @@ export interface Bill {
   dueDay: number;
   category: BillCategory;
   autopay: boolean;
+  /** When a promotional price on this bill ends (YYYY-MM-DD), so the user can call before it jumps. */
+  promoEnds?: string;
 }
 
 export function validateBill(b: Omit<Bill, "id">): string | null {

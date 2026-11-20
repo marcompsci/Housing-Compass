@@ -3,6 +3,7 @@
  * when they stop counting, and disputes with the bureau's 30-day response date. Device-only.
  */
 import { BUREAUS, disputeStatus, FREE_REPORT_URL, inquiryStatus, reportCheckStatus, type Bureau } from "@housing-compass/core";
+import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, today } from "../components/forms";
@@ -45,6 +46,7 @@ function CreditTools() {
         {t("ct.intro")}
       </Banner>
 
+      <Button kind="secondary" icon="analytics-outline" label={t("sc.title")} onPress={() => router.push("/scores")} testID="open-scores" />
       <Section title={t("ct.reports")}>
         <Text style={type.small}>{t("ct.reportsBody")}</Text>
         {reports.map((x) => (

@@ -1,4 +1,38 @@
-# Status report — v0.21 (2026-11-20): 30 more phases — know what's safe to spend, track your credit, get paid what your time is worth
+# Status report — v0.22 (2026-11-20): 20 more phases — decide before you spend, stay under a weekly limit, watch your credit trend
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Can I afford this? | A price checked against safe-to-spend and the 30-day forecast. | `core/coach.ts` `canAfford`; `/afford` |
+| 2 | Clear verdicts | Yes / tight / wait until payday (with date) / not now, plus the lowest balance after buying. | `canAfford` |
+| 3 | Update balance | Change today's balance right on the Today card. | Money → Today |
+| 4 | Today shortcuts | "Can I afford this?" and "$X left this week" buttons. | Money → Today |
+| 5 | Weekly spending limit | Limit for everyday spending; weeks start Monday; what's left and per day. | `weekSpending`; `/spending` |
+| 6 | Quick spend log | Food / coffee / gas / fun chips, amount, remove. | `/spending` |
+| 7 | Under-limit streak | Finished weeks in a row within the limit. | `underLimitStreak` |
+| 8 | Weekly review | One-line summary: spent vs limit, side income, bills paid; shareable. | `weeklyReview` |
+| 9 | Windfall planner | Refund/bonus split: overdue → 1-month cushion → highest-APR debt → goals → for you (0/10/20%). | `windfallPlan`; `/windfall` |
+| 10 | Score journal | Scores the user sees, with date and source. The app never estimates a score. | `scoreTrend`; `/scores` |
+| 11 | Score trend | Change from the same source and a bar chart of the last 12 entries. | `/scores` |
+| 12 | Dispute letter | Letter to Equifax/Experian/TransUnion with placeholders; copies, never originals. | `disputeLetter`; Letters |
+| 13 | Free-report reminder | Local notification at 10am the day a free weekly report is available again. | `reportReminder`; `lib/reminders.ts` |
+| 14 | Bill promo watch | Optional promo-price end date on a bill. | `Bill.promoEnds`; Bills & budget |
+| 15 | Promo in My plan | Reminder up to 21 days ahead to call before the price goes up. | `billPromoItems` |
+| 16 | Debt progress | Update a balance; amount and % paid down since first added. | `debtProgress`; Debt payoff |
+| 17 | Paid-off celebration | Paid-off debts marked 🎉 with a count. | Debt payoff |
+| 18 | Tool search | Find any money tool by name. | Money hub |
+| 19 | Backup, privacy, translations | New data in backups (strict schema, score 300–900), export, clear, Face ID lock; 84 new strings in en/es/zh. | `RenterBackupSchema`, `strings.ts` |
+| 20 | Tests | 12 new core tests; 11 new browser checks. | `test/v022.test.ts`, e2e |
+
+### Tests (all passing)
+- Core: 255 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 170 checks, screenshots 73–77
+
+Still blocked on the owner: merge, re-verify the 76 expired research leads, Supabase keys, data agreements, `eas init`, counsel and native-speaker review, App Store URLs and screenshots.
+
+---
+
+## Previous: v0.21 (2026-11-20): 30 more phases — know what's safe to spend, track your credit, get paid what your time is worth
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

@@ -6,7 +6,7 @@ import { now } from "../config";
 import { useT } from "../i18n";
 import { useRenter } from "../state/renter";
 import { color, type } from "../theme";
-import { Field, formStyles, today, usd } from "./forms";
+import { Field, formStyles, toCents, today, usd } from "./forms";
 import { Button } from "./ui";
 
 const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
@@ -17,6 +17,7 @@ export function DebtTiming({ debt }: { debt: Debt }) {
   const [open, setOpen] = useState(false);
   const [day, setDay] = useState(debt.statementDay ? String(debt.statementDay) : "");
   const [promo, setPromo] = useState(debt.promoEnds ?? "");
+  const [bal, setBal] = useState(String(debt.balanceCents / 100));
   const [err, setErr] = useState<string | null>(null);
   const td = today(now());
   const st = statementTiming(debt, td);
@@ -35,6 +36,7 @@ export function DebtTiming({ debt }: { debt: Debt }) {
       ) : null}
       {open ? (
         <View style={formStyles.card}>
+          <Field label={t("dp.balance")} value={bal} onChangeText={setBal} keyboardType="decimal-pad" testID="debt-balance-update" />
           <View style={formStyles.row}>
             <View style={{ flex: 1, minWidth: 120 }}>
               <Field label={t("card.statementDay")} value={day} onChangeText={setDay} keyboardType="number-pad" testID="debt-stmt-day" />
@@ -50,15 +52,17 @@ export function DebtTiming({ debt }: { debt: Debt }) {
             testID="debt-timing-save"
             onPress={() => {
               const d = Number(day);
+              const b = toCents(bal);
+              if (!(b >= 0)) return setErr(t("card.err"));
               if ((day.trim() && !(Number.isInteger(d) && d >= 1 && d <= 31)) || (promo.trim() && !isDate(promo.trim()))) return setErr(t("card.err"));
-              update(debt.id, { statementDay: day.trim() ? d : undefined, promoEnds: promo.trim() || undefined });
+              update(debt.id, { balanceCents: b, startBalanceCents: Math.max(debt.startBalanceCents ?? debt.balanceCents, b), statementDay: day.trim() ? d : undefined, promoEnds: promo.trim() || undefined });
               setErr(null);
               setOpen(false);
             }}
           />
         </View>
       ) : (
-        <Button kind="ghost" icon="calendar-outline" label={t("card.edit")} onPress={() => setOpen(true)} testID="debt-timing-edit" />
+        <Button kind="ghost" icon="calendar-outline" label={t("dp.edit")} onPress={() => setOpen(true)} testID="debt-timing-edit" />
       )}
     </View>
   );

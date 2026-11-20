@@ -25,6 +25,7 @@ function AddBill() {
   const [day, setDay] = useState("");
   const [cat, setCat] = useState<BillCategory>("utilities");
   const [autopay, setAutopay] = useState(false);
+  const [promo, setPromo] = useState("");
   const [err, setErr] = useState<string | null>(null);
   return (
     <Section title={t("bills.addTitle")}>
@@ -43,6 +44,7 @@ function AddBill() {
         ))}
       </View>
       <Chip icon={autopay ? "checkbox-outline" : "square-outline"} label={t("bills.autopay")} selected={autopay} onPress={() => setAutopay(!autopay)} />
+      <Field label={t("bp.field")} value={promo} onChangeText={setPromo} autoCapitalize="none" placeholder="2027-03-01" hint={t("bp.hint")} testID="bill-promo" />
       {err ? <Text style={[type.small, { color: color.danger }]}>{err}</Text> : null}
       <Button
         icon="add-circle-outline"
@@ -52,7 +54,9 @@ function AddBill() {
           const b = { name: name.trim().slice(0, 60), amountCents: toCents(amount), dueDay: Number(day), category: cat, autopay };
           const e = validateBill(b);
           if (e) return setErr(e);
-          add(b);
+          if (promo.trim() && !(/^\d{4}-\d{2}-\d{2}$/.test(promo.trim()) && !Number.isNaN(Date.parse(promo.trim())))) return setErr(t("bp.err"));
+          add({ ...b, ...(promo.trim() ? { promoEnds: promo.trim() } : {}) });
+          setPromo("");
           setName("");
           setAmount("");
           setDay("");
@@ -132,6 +136,7 @@ export default function Bills() {
                   <Text style={type.tiny}>
                     {t(`bills.c.${s.bill.category}`)} · {t("bills.dueOn", { date: s.nextDue })}
                     {s.bill.autopay ? ` · ${t("bills.autopayShort")}` : ""}
+                    {s.bill.promoEnds ? ` · ${t("bp.ends", { date: s.bill.promoEnds })}` : ""}
                     {r.hourlyCents ? ` · ${t("hrs.short", { n: hoursToCover(s.bill.amountCents, r.hourlyCents) ?? 0 })}` : ""}
                   </Text>
                 </View>
