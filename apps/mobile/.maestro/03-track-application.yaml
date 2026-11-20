@@ -1,0 +1,10 @@
+appId: com.phoronomicstudios.housingcompass
+---
+- launchApp: { clearState: true }
+- tapOn: "DEMO · Sunny room in 3BR flat"
+- scrollUntilVisible: { element: "Track application" }
+- tapOn: "Track application"
+- assertVisible: "Applications"
+- assertVisible: "Interested"
+- tapOn: "→ Applied"
+- assertVisible: "Applied"
