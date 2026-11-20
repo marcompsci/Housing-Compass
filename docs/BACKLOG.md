@@ -28,7 +28,16 @@
 ## Done in v0.17
 - Move-in photos (on device), translated move-in items, rent-increase checker (statewide cap), bills & budget
 
-## Next ideas (after v0.17)
+## Done in v0.18
+- Bank CSV import (#25), plus paycheck planner, debts, credit, goals, found money, backup (see STATUS_REPORT)
+
+## Next ideas (after v0.18)
+26. Re-verify or retire the 76 expired research leads; schedule rechecks
+27. Pick the CSV file directly (document picker) instead of pasting
+28. Local allowed-increase figures per rent board in the increase checker
+29. Optional end-to-end encrypted cloud backup (opt-in)
+
+## Earlier ideas (after v0.17)
 21. Optional encrypted backup of renter tools to the user's account (opt-in; off by default)
 22. Native-speaker review of v0.16–v0.17 Spanish/Chinese strings
 23. Local allowed-increase figures per rent board (with source and date) in the increase checker

@@ -12,6 +12,11 @@ do $$ begin
   assert (select count(*) from units u join listings l on l.id = u.listing_id where l.source_id like 'research-%') = 76, 'one unit per lead';
 end $$;
 
+-- Seeds carry their research dates (Nov 1, 2026). Re-date them to "yesterday" so these tests
+-- give the same result whatever day they run; §5 back-dates one lead on purpose.
+update listings set captured_at = now() - interval '1 day', last_price_check_at = case when last_price_check_at is null then null else now() - interval '1 day' end
+ where source_id like 'research-%';
+
 -- 2. A listing on an aggregator/research source cannot be marked OFFICIAL_PORTAL.
 do $$ begin
   begin

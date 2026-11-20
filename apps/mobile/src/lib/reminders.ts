@@ -4,7 +4,7 @@
  * when the user turns reminders on. On the web there are no scheduled notifications; the
  * "My plan" tab shows the same items instead.
  */
-import { billReminders, billStatuses, reminderSchedule, type ReminderPlan } from "@housing-compass/core";
+import { billReminders, billStatuses, paycheckPlan, reminderSchedule, upcomingObligations, type ReminderPlan } from "@housing-compass/core";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -51,7 +51,17 @@ export function currentReminderPlans(): ReminderPlan[] {
   const n = now();
   const offset = -n.getTimezoneOffset();
   const base = reminderSchedule({ rent: r.rentSetup ? { setup: r.rentSetup, payments: r.payments } : null, tours, now: n, utcOffsetMinutes: offset });
-  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset)].sort((a, b) => a.at.localeCompare(b.at));
+  const payday: ReminderPlan[] = [];
+  if (r.pay) {
+    const from = n.toISOString().slice(0, 10);
+    const plan = paycheckPlan(r.pay, upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from, days: 45 }), from);
+    for (const b of plan.buckets.slice(0, 3)) {
+      const at = new Date(`${b.payday}T08:00:00Z`).getTime() - offset * 60_000;
+      if (at > n.getTime() && b.setAsideCents > 0)
+        payday.push({ id: `pay:${b.payday}`, at: new Date(at).toISOString(), title: "Payday: set money aside", body: `Set aside $${(b.setAsideCents / 100).toLocaleString("en-US")} from this check for ${b.covers.map((c) => c.name).join(", ")}.` });
+    }
+  }
+  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset), ...payday].sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /** Keeps the scheduled reminders in step with rent, payments and tours. Mounted once in the root layout. */
@@ -62,6 +72,7 @@ export function useReminderSync() {
   const threads = useConversations((s) => s.threads);
   const bills = useRenter((s) => s.bills);
   const billPaid = useRenter((s) => s.billPaid);
+  const pay = useRenter((s) => s.pay);
   useEffect(() => {
     if (!remindersSupported) return;
     const id = setTimeout(() => {
@@ -70,5 +81,5 @@ export function useReminderSync() {
       );
     }, 500);
     return () => clearTimeout(id);
-  }, [on, setup, payments, threads, bills, billPaid]);
+  }, [on, setup, payments, threads, bills, billPaid, pay]);
 }

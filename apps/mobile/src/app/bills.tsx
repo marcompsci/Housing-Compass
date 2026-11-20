@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, billStatuses, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, billStatuses, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -114,6 +114,11 @@ export default function Bills() {
                     {s.bill.autopay ? ` · ${t("bills.autopayShort")}` : ""}
                   </Text>
                 </View>
+                {s.bill.category === "subscription" ? (
+                  <Pressable onPress={() => r.toggleUnusedSub(s.bill.id)} accessibilityRole="checkbox" accessibilityState={{ checked: r.unusedSubs.includes(s.bill.id) }} accessibilityLabel={t("sub.notUsing", { name: s.bill.name })} hitSlop={8} testID="sub-unused">
+                    <Tag label={r.unusedSubs.includes(s.bill.id) ? t("sub.cancel") : t("sub.using")} tone={r.unusedSubs.includes(s.bill.id) ? "warn" : "neutral"} />
+                  </Pressable>
+                ) : null}
                 {stateTag(s)}
                 <Pressable onPress={() => r.removeBill(s.bill.id)} accessibilityRole="button" accessibilityLabel={t("bills.remove", { name: s.bill.name })} hitSlop={10}>
                   <Icon name="trash-outline" tint={color.muted} />
@@ -130,6 +135,15 @@ export default function Bills() {
               onPress={() => void saveAndShare("housing-compass-due-dates.ics", buildIcs(dueDateEvents(r.rentSetup, r.bills, n), n), "text/calendar", "com.apple.ical.ics")}
             />
           ) : null}
+          {(() => {
+            const sv = subscriptionSavings(r.bills, r.unusedSubs);
+            return sv.subscriptions ? (
+              <View style={styles.subBox} testID="sub-savings">
+                <Text style={type.small}>{t("sub.total", { n: sv.subscriptions, amount: usd(sv.monthlyAllCents), year: usd(sv.monthlyAllCents * 12) })}</Text>
+                {sv.cutMonthlyCents ? <Text style={[type.small, { fontWeight: "800", color: color.verified }]}>{t("sub.save", { amount: usd(sv.cutYearlyCents) })}</Text> : <Text style={type.tiny}>{t("sub.hint")}</Text>}
+              </View>
+            ) : null;
+          })()}
           <Text style={type.tiny}>{t("bills.remindersNote")}</Text>
         </Section>
 
@@ -167,5 +181,6 @@ export default function Bills() {
 
 const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
+  subBox: { padding: 10, borderRadius: 10, backgroundColor: color.brandSoft, gap: 4 },
   row: { flexDirection: "row", gap: 10, alignItems: "center", paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
 });

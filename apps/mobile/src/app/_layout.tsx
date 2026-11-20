@@ -54,6 +54,16 @@ export default function RootLayout() {
         <Stack.Screen name="local-help" options={{ title: "Local rent rules & help" }} />
         <Stack.Screen name="bills" options={{ title: "Bills & budget" }} />
         <Stack.Screen name="rent-increase" options={{ title: "Rent increase checker" }} />
+        <Stack.Screen name="money" options={{ title: "Money" }} />
+        <Stack.Screen name="paycheck" options={{ title: "Paycheck planner" }} />
+        <Stack.Screen name="import" options={{ title: "Import bank statement" }} />
+        <Stack.Screen name="debts" options={{ title: "Debt payoff" }} />
+        <Stack.Screen name="credit" options={{ title: "Credit builder" }} />
+        <Stack.Screen name="goals" options={{ title: "Savings goals" }} />
+        <Stack.Screen name="found-money" options={{ title: "Found money" }} />
+        <Stack.Screen name="split" options={{ title: "Split with roommates" }} />
+        <Stack.Screen name="backup" options={{ title: "Backup & restore" }} />
+        <Stack.Screen name="setup" options={{ title: "Quick setup" }} />
       </Stack>
     </SafeAreaProvider>
   );

@@ -39,6 +39,7 @@ export async function exportMyData(signedIn: boolean): Promise<string> {
       notes: s.notes,
       savedAreas: s.savedAreas,
       renter: (({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches, bills, billPaid, takeHomeCents, photos }) => ({ rentSetup, payments, moveIn, condition, moveOut, waitlists, recentSearches, bills, billPaid, takeHomeCents, photoCount: Object.values(photos).flat().length }))(useRenter.getState()),
+      money: (({ pay, startBalanceCents, debts, goals, unusedSubs, creditDone }) => ({ pay, startBalanceCents, debts, goals, unusedSubs, creditDone }))(useRenter.getState()),
     },
     server,
     now(),

@@ -19,6 +19,8 @@ export interface DeviceData {
   savedAreas?: unknown[];
   /** Rent payments, move-in/out records and waitlists (device-only renter tools). */
   renter?: unknown;
+  /** Paychecks, debts, savings goals and credit checklist (device-only money tools). */
+  money?: unknown;
 }
 
 export function buildDataExport(device: DeviceData, server: unknown | null, now: Date): string {

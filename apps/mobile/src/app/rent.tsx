@@ -3,7 +3,7 @@
  * history as a spreadsheet (for a landlord reference or a rent-reporting service), and turn on
  * local reminders. Device-only; nothing here is uploaded.
  */
-import { MILESTONES, milestoneProgress, paymentHistorySummary, paymentTiming, paymentsCsv, rentSummary, validatePayment, type RentPayment } from "@housing-compass/core";
+import { MILESTONES, lateFeesThisYear, milestoneProgress, paymentHistorySummary, paymentTiming, paymentsCsv, rentSummary, validatePayment, type RentPayment } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -68,13 +68,16 @@ function LogPayment() {
   const [amount, setAmount] = useState(String(setup.amountCents / 100));
   const [method, setMethod] = useState<RentPayment["method"]>("portal");
   const [conf, setConf] = useState("");
+  const [fee, setFee] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const add = () => {
-    const p = { month, paidOn, amountCents: toCents(amount), method, confirmation: conf.trim().slice(0, 60) };
+    const feeC = fee.trim() ? toCents(fee) : 0;
+    const p = { month, paidOn, amountCents: toCents(amount), method, confirmation: conf.trim().slice(0, 60), ...(feeC > 0 ? { lateFeeCents: feeC } : {}) };
     const err = validatePayment(p, payments);
     if (err) return setMsg({ ok: false, text: err });
     addPayment(p);
     setConf("");
+    setFee("");
     setMsg({ ok: true, text: paymentTiming({ ...p, id: "" }, setup) === "on_time" ? t("rent.loggedOnTime") : t("rent.loggedLate") });
   };
   return (
@@ -95,6 +98,7 @@ function LogPayment() {
         ))}
       </View>
       <Field label={t("rent.confirmation")} value={conf} onChangeText={setConf} placeholder={t("rent.confirmationPh")} autoCapitalize="none" />
+      <Field label={t("fee.label")} value={fee} onChangeText={setFee} keyboardType="decimal-pad" hint={t("fee.hint")} testID="pay-late-fee" />
       {msg ? <Text style={[type.small, { color: msg.ok ? color.verified : color.danger }]} testID="pay-msg">{msg.text}</Text> : null}
       <Button icon="checkmark-circle-outline" label={t("rent.logButton")} onPress={add} testID="pay-add" />
       <Text style={type.tiny}>{t("rent.receiptTip")}</Text>
@@ -235,6 +239,10 @@ function RentScreen() {
         ) : null}
         {exportMsg ? <Text style={type.tiny}>{exportMsg}</Text> : null}
         <KV k={t("rent.totalLogged")} v={usd(s.totalPaidCents)} />
+        {(() => {
+          const lf = lateFeesThisYear(payments.filter((p) => p.lateFeeCents).map((p) => ({ date: p.paidOn, amountCents: p.lateFeeCents! })), now());
+          return lf.count ? <KV k={t("fee.year", { n: lf.count })} v={usd(lf.totalCents)} /> : null;
+        })()}
       </Section>
 
       <Milestones streak={s.onTimeStreak} />

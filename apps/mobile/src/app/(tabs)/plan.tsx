@@ -57,6 +57,7 @@ export default function Plan() {
   const rs = r.rentSetup ? rentSummary(r.rentSetup, r.payments, n) : null;
   const tools: Array<{ icon: IconName; label: string; sub: string; href: string; testID: string }> = [
     { icon: "cash-outline", label: t("plan.toolRent"), sub: rs && rs.onTimeStreak ? t("rent.streak", { n: rs.onTimeStreak }) : t("plan.toolRentSub"), href: "/rent", testID: "tool-rent" },
+    { icon: "cash-outline", label: t("money.title"), sub: t("money.hubSub"), href: "/money", testID: "tool-money" },
     { icon: "receipt-outline", label: t("plan.toolBills"), sub: r.bills.length ? t("plan.billsCount", { n: r.bills.length }) : t("plan.toolBillsSub"), href: "/bills", testID: "tool-bills" },
     { icon: "trending-up-outline", label: t("inc.link"), sub: t("plan.toolIncSub"), href: "/rent-increase", testID: "tool-increase" },
     { icon: "clipboard-outline", label: t("plan.toolMove"), sub: t("plan.toolMoveSub"), href: "/move", testID: "tool-move" },
@@ -73,6 +74,7 @@ export default function Plan() {
         <Text style={type.small}>{t("plan.intro")}</Text>
 
         <Section title={t("plan.next30")}>
+          {!r.setupDone && !r.rentSetup && !r.pay ? <Button icon="rocket-outline" label={t("money.setupStart")} onPress={() => router.push("/setup")} testID="plan-setup" /> : null}
           {plan.length === 0 ? (
             <View style={{ gap: 8 }}>
               <Text style={type.small}>{t("plan.empty")}</Text>

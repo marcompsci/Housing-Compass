@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.17). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.18). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -31,6 +31,16 @@ KEEP EVERY BILL ON TRACK
 • Add your phone, utilities, insurance and other bills next to rent and check them off each month.
 • See what's left of your take-home pay after rent and bills.
 • Check a rent-increase notice against California's statewide cap.
+
+PLAN EVERY PAYCHECK
+• See which paycheck covers rent and each bill, and how much to set aside on payday.
+• Forecast your balance for the next 30 days and get warned before it dips below $0.
+• Import your bank's CSV to mark rent and bills paid — no bank login.
+
+GET OUT OF DEBT AND BUILD CREDIT
+• Compare avalanche and snowball payoff plans.
+• Check your credit card use and follow a simple credit checklist.
+• Find money you may be owed: unclaimed property, tax credits and bill discounts from official programs.
 
 PROTECT YOUR DEPOSIT
 • Make a dated, room-by-room move-in condition record with photos.

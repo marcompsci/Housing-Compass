@@ -27,6 +27,8 @@ export interface RentPayment {
   amountCents: number;
   method: "bank_transfer" | "check" | "money_order" | "portal" | "cash_with_receipt" | "other";
   confirmation: string;
+  /** Late fee charged for this month, if any. */
+  lateFeeCents?: number;
 }
 
 export function dueDateFor(month: string, dueDay: number): string {

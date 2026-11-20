@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type RentPayment, type RentSetup, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type CreditStep, type Debt, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -38,6 +38,25 @@ interface RenterState {
   /** "room:item" → photos stored in this app's private folder */
   photos: Record<string, Array<{ uri: string; at: string }>>;
   lockOn: boolean;
+  pay: PaySetup | null;
+  startBalanceCents: number | null;
+  debts: Debt[];
+  goals: SavingsGoal[];
+  unusedSubs: string[];
+  creditDone: CreditStep[];
+  setupDone: boolean;
+  setPay(p: PaySetup | null): void;
+  setStartBalance(c: number | null): void;
+  addDebt(d: Omit<Debt, "id">): void;
+  removeDebt(id: string): void;
+  addGoal(g: Omit<SavingsGoal, "id">): void;
+  updateGoal(id: string, p: Partial<Omit<SavingsGoal, "id">>): void;
+  removeGoal(id: string): void;
+  toggleUnusedSub(id: string): void;
+  toggleCreditStep(s: CreditStep): void;
+  setSetupDone(d: boolean): void;
+  markBillPaid(id: string, month: string): void;
+  restore(b: RenterBackup): void;
   addBill(b: Omit<Bill, "id">): void;
   removeBill(id: string): void;
   toggleBillPaid(id: string, month: string): void;
@@ -60,7 +79,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -84,7 +103,7 @@ export const useRenter = create<RenterState>()(
       addBill: (b) => set({ bills: [...get().bills, { ...b, id: uuid() }] }),
       removeBill: (id) => {
         const { [id]: _gone, ...billPaid } = get().billPaid;
-        set({ bills: get().bills.filter((b) => b.id !== id), billPaid });
+        set({ bills: get().bills.filter((b) => b.id !== id), billPaid, unusedSubs: get().unusedSubs.filter((x) => x !== id) });
       },
       toggleBillPaid: (id, month) => {
         const cur = get().billPaid[id] ?? [];
@@ -94,6 +113,35 @@ export const useRenter = create<RenterState>()(
       addPhoto: (key, p) => set({ photos: { ...get().photos, [key]: [...(get().photos[key] ?? []), p].slice(-6) } }),
       removePhoto: (key, uri) => set({ photos: { ...get().photos, [key]: (get().photos[key] ?? []).filter((p) => p.uri !== uri) } }),
       setLockOn: (lockOn) => set({ lockOn }),
+      setPay: (pay) => set({ pay }),
+      setStartBalance: (startBalanceCents) => set({ startBalanceCents }),
+      addDebt: (d) => set({ debts: [...get().debts, { ...d, id: uuid() }] }),
+      removeDebt: (id) => set({ debts: get().debts.filter((d) => d.id !== id) }),
+      addGoal: (g) => set({ goals: [...get().goals, { ...g, id: uuid() }] }),
+      updateGoal: (id, p) => set({ goals: get().goals.map((g) => (g.id === id ? { ...g, ...p } : g)) }),
+      removeGoal: (id) => set({ goals: get().goals.filter((g) => g.id !== id) }),
+      toggleUnusedSub: (id) => set({ unusedSubs: get().unusedSubs.includes(id) ? get().unusedSubs.filter((x) => x !== id) : [...get().unusedSubs, id] }),
+      toggleCreditStep: (st) => set({ creditDone: get().creditDone.includes(st) ? get().creditDone.filter((x) => x !== st) : [...get().creditDone, st] }),
+      setSetupDone: (setupDone) => set({ setupDone }),
+      markBillPaid: (id, month) => {
+        const cur = get().billPaid[id] ?? [];
+        if (!cur.includes(month)) set({ billPaid: { ...get().billPaid, [id]: [...cur, month].slice(-36) } });
+      },
+      restore: (b) =>
+        set({
+          rentSetup: b.data.rentSetup,
+          payments: b.data.payments,
+          bills: b.data.bills,
+          billPaid: b.data.billPaid,
+          takeHomeCents: b.data.takeHomeCents,
+          waitlists: b.data.waitlists,
+          pay: b.data.pay,
+          debts: b.data.debts,
+          goals: b.data.goals,
+          unusedSubs: b.data.unusedSubs,
+          creditDone: b.data.creditDone,
+          setupDone: true,
+        }),
       clearAll: () => set(EMPTY),
     }),
     { name: "housing-compass-renter-local-only", storage: createJSONStorage(() => AsyncStorage) },

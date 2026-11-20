@@ -41,6 +41,10 @@ await mkdir(out, { recursive: true });
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
+// Freeze the browser clock so date-based behavior (lead expiry, due dates, countdowns) is the
+// same on every run. Override with E2E_NOW=<ISO date>.
+const NOW = new Date(process.env.E2E_NOW ?? "2026-11-05T18:00:00.000Z");
+await page.clock.setFixedTime(NOW);
 page.on("pageerror", (e) => failures.push(`page error: ${e.message}`));
 const shot = (name, fullPage = false) => page.screenshot({ path: join(out, `${name}.png`), fullPage });
 const tab = (label) => page.getByRole("button", { name: label, exact: true }).first().click();
@@ -488,7 +492,7 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
   await shot("44-plan-empty");
   await page.getByTestId("tool-rent").click();
   await page.getByTestId("rent-amount").fill("1400");
-  await page.getByTestId("rent-due-day").fill(String(new Date().getUTCDate()));
+  await page.getByTestId("rent-due-day").fill(String(new Date(NOW).getUTCDate()));
   await page.getByTestId("rent-save-setup").click();
   await page.getByTestId("rent-summary").waitFor();
   await page.getByTestId("pay-add").click();
@@ -513,7 +517,7 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
   await page.getByTestId("condition-item").first().getByRole("button", { name: "Damaged" }).click();
   await page.getByLabel("What's wrong?").fill("Deadbolt sticks");
   check((await page.getByText(/1 of \d+ items checked/).count()) === 1 && (await page.getByText("1 damaged").count()) === 1, "move-in record tracks items and damage");
-  const moveOut = new Date(Date.now() - 10 * 86_400_000);
+  const moveOut = new Date(NOW.getTime() - 10 * 86_400_000);
   await page.getByTestId("moveout-date").fill(iso(moveOut));
   await page.getByTestId("moveout-deposit").fill("1400");
   await page.getByTestId("moveout-forwarding").fill("2 Elm St, Oakland CA 94612");
@@ -524,7 +528,7 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
 
   await page.goto(`${base}/waitlists`);
   await page.getByTestId("wl-name").fill("Oakland Housing Authority — Section 8");
-  await page.getByTestId("wl-checkin").fill(iso(new Date(Date.now() + 3 * 86_400_000)));
+  await page.getByTestId("wl-checkin").fill(iso(new Date(NOW.getTime() + 3 * 86_400_000)));
   await page.getByTestId("wl-add").click();
   await page.getByTestId("waitlist-card").waitFor();
   check((await page.getByText("Check-in due soon").count()) === 1, "waitlist flags an upcoming check-in");
@@ -561,7 +565,7 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
   await page.goto(`${base}/plan`);
   await page.getByTestId("tool-bills").click();
   await page.getByTestId("bills").waitFor();
-  const day = new Date().getUTCDate();
+  const day = new Date(NOW).getUTCDate();
   const soonDay = ((day + 1) % 28) + 1;
   await page.getByTestId("bill-name").fill("Phone");
   await page.getByTestId("bill-amount").fill("65");
@@ -618,6 +622,125 @@ check((await page.getByText(/Saved on this device|You haven't reported any listi
   await page.goto(`${base}/help`);
   await page.getByRole("button", { name: "English" }).click();
 }
+
+// ── v0.18: money hub, quick setup, paycheck planner, bank import, debts, credit, goals, found money, split, backup
+{
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const todayIso = iso(new Date(NOW));
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("tool-money").click();
+  await page.getByTestId("money").waitFor();
+  check((await page.getByTestId("setup-start").count()) === 1, "money hub offers quick setup");
+  await page.getByTestId("setup-start").click();
+  await page.getByTestId("setup-rent").fill("1400");
+  await page.getByTestId("setup-due").fill(String(new Date(NOW).getUTCDate()));
+  await page.getByTestId("setup-next-1").click();
+  await page.getByRole("button", { name: "Every 2 weeks" }).click();
+  await page.getByTestId("pay-amount-in").fill("1500");
+  await page.getByTestId("pay-anchor").fill(iso(new Date(NOW.getTime() + 3 * 86_400_000)));
+  await page.getByTestId("pay-save").click();
+  await page.getByTestId("setup-bill-name").fill("Netflix");
+  await page.getByTestId("setup-bill-amount").fill("15.99");
+  await page.getByTestId("setup-bill-day").fill("25");
+  await page.getByTestId("setup-bill-add").click();
+  await page.getByTestId("setup-done").click();
+  await page.getByTestId("money-snapshot").waitFor();
+  check(/Set aside \$/.test(await page.getByTestId("money-snapshot").innerText()), "quick setup fills the money snapshot");
+  await shot("53-money");
+
+  await page.getByTestId("tool-paycheck").click();
+  await page.getByTestId("pay-bucket").first().waitFor();
+  check((await page.getByTestId("pay-bucket").count()) >= 3, "paycheck planner shows upcoming checks");
+  await page.getByTestId("start-balance").fill("200");
+  await page.getByTestId("forecast-btn").click();
+  await page.getByTestId("forecast").waitFor();
+  check(/Lowest balance ahead/.test(await page.getByTestId("forecast").innerText()), "30-day forecast finds the lowest balance");
+  await shot("54-paycheck", true);
+
+  await page.goto(`${base}/import`);
+  const due = new Date(NOW);
+  const csv = `Date,Description,Amount\n${iso(due)},OAK ST RENT PAYMENT,-1400.00\n${iso(due)},COFFEE,-4.50\n`;
+  await page.getByTestId("csv-input").fill(csv);
+  await page.getByTestId("csv-read").click();
+  await page.getByTestId("imp-info").waitFor();
+  const imp = await page.getByTestId("imp-info").innerText();
+  check(/Read 2 rows/.test(imp), "bank CSV is read on the device");
+  check((await page.getByTestId("match-row").count()) === 0 || (await page.getByTestId("match-apply").count()) === 1, "matches are offered for confirmation");
+  await shot("55-import");
+
+  await page.goto(`${base}/debts`);
+  for (const [n, b, a, m] of [["Visa", "3000", "24.99", "90"], ["Car loan", "1000", "8", "50"]]) {
+    await page.getByTestId("debt-name").fill(n);
+    await page.getByTestId("debt-balance").fill(b);
+    await page.getByTestId("debt-apr").fill(a);
+    await page.getByTestId("debt-min").fill(m);
+    await page.getByTestId("debt-add").click();
+  }
+  await page.getByTestId("debt-extra").fill("100");
+  await page.getByTestId("plan-avalanche").waitFor();
+  check((await page.getByTestId("debt-row").count()) === 2 && /Visa → Car loan/.test(await page.getByTestId("plan-avalanche").innerText()) && /Car loan → Visa/.test(await page.getByTestId("plan-snowball").innerText()), "debt planner compares avalanche and snowball");
+  await shot("56-debts", true);
+
+  await page.goto(`${base}/credit`);
+  await page.getByTestId("card-bal-0").fill("900");
+  await page.getByTestId("card-lim-0").fill("2000");
+  await page.getByTestId("util-result").waitFor();
+  check(/45%/.test(await page.getByTestId("util-result").innerText()), "credit utilization is calculated");
+  await page.getByTestId("credit-step-reports").click();
+  check((await page.getByText("1 of 6 done").count()) === 1, "credit checklist tracks progress");
+  await shot("57-credit");
+
+  await page.goto(`${base}/goals`);
+  await page.getByRole("button", { name: "Move-in fund" }).click();
+  await page.getByTestId("goal-target").fill("3000");
+  await page.getByTestId("goal-saved").fill("600");
+  await page.getByTestId("goal-date").fill(iso(new Date(NOW.getTime() + 120 * 86_400_000)));
+  await page.getByTestId("goal-create").click();
+  await page.getByTestId("goal-card").waitFor();
+  check(/Per paycheck/.test(await page.getByTestId("goal-card").innerText()), "savings goal shows per-paycheck amount");
+
+  await page.goto(`${base}/found-money`);
+  await page.getByTestId("program-card").first().waitFor();
+  check((await page.getByTestId("program-card").count()) >= 8 && (await page.getByText("Never pay to apply").count()) >= 1, "found money lists official programs with a scam warning");
+  await shot("58-found-money");
+
+  await page.goto(`${base}/split`);
+  await page.getByTestId("split-total").fill("3000");
+  await page.getByTestId("split-share-0").fill("2");
+  check(/\$2,000[\s\S]*\$1,000/.test(await page.getByTestId("split-result").innerText()), "roommate split by shares");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("bill-name").fill("Music");
+  await page.getByTestId("bill-amount").fill("15.99");
+  await page.getByTestId("bill-day").fill("9");
+  await page.getByRole("button", { name: "Subscription", exact: true }).click();
+  await page.getByTestId("bill-add").click();
+  await page.getByTestId("sub-unused").first().click();
+  check(/saves \$191\.88 a year/.test(await page.getByTestId("sub-savings").innerText()), "subscription audit shows yearly savings");
+
+  await page.goto(`${base}/backup`);
+  const store = JSON.parse(await page.evaluate(() => localStorage.getItem("housing-compass-renter-local-only"))).state;
+  const backup = { app: "housing-compass", kind: "renter-backup", version: 1, createdAt: new Date(NOW).toISOString(), data: { rentSetup: store.rentSetup, payments: store.payments, bills: store.bills, billPaid: store.billPaid, takeHomeCents: store.takeHomeCents, waitlists: store.waitlists, pay: store.pay, debts: store.debts, goals: store.goals, unusedSubs: store.unusedSubs, creditDone: store.creditDone } };
+  await page.getByTestId("backup-save").waitFor();
+  check((await page.getByTestId("backup-save").count()) === 1, "backup can be saved as a file");
+  await page.getByTestId("backup-input").fill("not json");
+  await page.getByTestId("backup-check").click();
+  check(/isn't a Housing Compass backup/.test(await page.getByTestId("backup-msg").innerText()), "bad backups are rejected without changes");
+  await page.getByTestId("backup-input").fill(JSON.stringify(backup));
+  await page.getByTestId("backup-check").click();
+  await page.getByTestId("backup-restore").click();
+  check(/Restored/.test(await page.getByTestId("backup-msg").innerText()), "backup restores after checking");
+  if (!(store.debts.length === 2 && store.goals.length === 1 && store.pay)) check(false, `backup contents: ${backupSummaryLog(store)}`);
+
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "Español" }).click();
+  await page.goto(`${base}/money`);
+  await page.getByText("Ahora mismo").waitFor();
+  check((await page.getByText("Dinero por reclamar").count()) >= 1, "money hub renders in Spanish");
+  await page.goto(`${base}/help`);
+  await page.getByRole("button", { name: "English" }).click();
+}
+function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.length} goals, pay=${!!s.pay}`; }
 
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);

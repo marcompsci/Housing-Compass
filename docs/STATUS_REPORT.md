@@ -1,4 +1,38 @@
-# Status report — v0.17 (2026-11-02): 10 more phases — every bill on time, a budget that adds up
+# Status report — v0.18 (2026-11-19): 20 more phases — plan every paycheck, get out of debt, find money you're owed
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Paycheck setup | Weekly, every 2 weeks, twice a month or monthly; take-home per check; a real payday to count from. | `core/money.ts`; Money → Paycheck planner |
+| 2 | Paycheck planner | Assigns rent and each unpaid bill to the last paycheck before it's due; shows "set aside" and "left over" per check, and anything due before the next check. | `paycheckPlan`, `upcomingObligations` |
+| 3 | 30-day forecast | Today's balance + paychecks − rent/bills, day by day; lowest point and a warning if it drops below $0. | Paycheck planner |
+| 4 | Payday reminders | Local notification on payday: how much to set aside and for what. | `lib/reminders.ts` |
+| 5 | Bank CSV import | Paste a bank's CSV export (Amount or Debit/Credit columns, several date formats). Read on the phone, never stored. | `parseBankCsv`; Money → Import |
+| 6 | Payment matching | Suggests rent/bill matches (±$1 or 2%, ±10 days, name match = "likely"); user confirms; logs rent and marks bills paid. | `matchTransactions` |
+| 7 | Debt payoff | Avalanche vs snowball with extra monthly amount: debt-free month, total interest, order; flags plans that never finish. | `payoffPlan`; Money → Debt payoff |
+| 8 | Credit utilization | Per-card and overall use, band, and how much to pay to get under 30% / 10%. Not saved. | `utilization`; Money → Credit builder |
+| 9 | Credit checklist | Free weekly reports (AnnualCreditReport.com), rent reporting, autopay minimums, utilization, fewer hard pulls, free disputes (FTC). | Credit builder |
+| 10 | Savings goals | Move-in, emergency, deposit goals: progress, per month and per paycheck to hit the date. | `goalPlan`; Money → Savings goals |
+| 11 | Found money | Official programs: unclaimed property (claimit.ca.gov), CalEITC/YCTC, free VITA tax help, CalFresh (BenefitsCal), CARE/FERA, California LifeLine, LIHEAP, free credit reports — with a "never pay to apply" warning. Checked 2026-11-19. | `FOUND_MONEY`; Money → Found money |
+| 12 | Subscription audit | Mark subscriptions you don't use; see monthly and yearly savings. | Bills & budget |
+| 13 | Late fee tracking | Record a late fee with a rent payment; total for the year. | Rent tracker |
+| 14 | Roommate split | Equal or share-based split that always adds up to the exact cent. Nothing saved. | `splitByShares`; Money → Split |
+| 15 | Quick setup | Three skippable steps: rent, paycheck, bills. | `/setup` |
+| 16 | Backup & restore | Save a JSON backup file; restore by pasting — validated with a strict schema before anything is replaced. | `RenterBackupSchema`; Money → Backup |
+| 17 | Money hub | Snapshot: next payday + set-aside, lowest balance ahead, debt-free date, goal progress; links to every tool. | `/money`, Plan tab |
+| 18 | Lock & privacy | Face ID lock covers all new money screens; data export and "Clear this device" include the new records. | `LockGate`, `lib/myData.ts` |
+| 19 | Translations | All new screens in English, Spanish and Simplified Chinese (225 new strings each). | `strings.ts` |
+| 20 | Deterministic tests | The browser clock is frozen in e2e so date rules (lead expiry, due dates) give the same result every run. | `scripts/e2e-screenshots.mjs` |
+
+Note: the 76 research leads passed their 14-day recheck window on Nov 15 and are now hidden in the app (as designed). They need to be re-verified or removed.
+
+### Tests (all passing)
+- Core: 199 unit tests (13 new)
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 114 checks (17 new), screenshots 53–58
+
+---
+
+## Previous: v0.17 (2026-11-02): 10 more phases — every bill on time, a budget that adds up
 
 | # | Phase | What it does | Where |
 |---|---|---|---|
