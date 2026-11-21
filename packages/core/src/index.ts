@@ -52,3 +52,4 @@ export * from "./coach";
 export * from "./grow";
 export * from "./habits";
 export * from "./assistant";
+export * from "./routine";

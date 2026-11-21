@@ -19,8 +19,15 @@ const daysBetween = (a: string, b: string) => Math.round((noon(b).getTime() - no
 const usd = (c: number) => `${c < 0 ? "-" : ""}$${(Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: Math.abs(c) % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 // ───────── Ask: intent parsing ─────────
-export type AskIntent = "afford" | "due" | "safe" | "payday" | "debt" | "budget" | "net_worth" | "credit" | "save" | "unknown";
+export type AskIntent = "afford" | "due" | "safe" | "payday" | "debt" | "budget" | "net_worth" | "credit" | "save" | "rent" | "side" | "tax" | "subs" | "trials" | "emergency" | "overview" | "unknown";
 const RULES: Array<[AskIntent, RegExp]> = [
+  ["overview", /how am i doing|how'?s my money|overview|cómo voy|cómo estoy|resumen|我(的)?财务(怎么样|状况)|我做得怎么样|总览/],
+  ["trials", /trial|prueba gratis|试用/],
+  ["subs", /subscription|suscripci|订阅/],
+  ["tax", /tax|impuesto|税/],
+  ["side", /side (income|hustle|gig)|gig|uber|doordash|lyft|instacart|ingresos? extra|副业|零工/],
+  ["emergency", /emergency|cushion|rainy day|emergencia|colchón|应急/],
+  ["rent", /\brent\b|renta|alquiler|房租/],
   ["afford", /afford|can i (buy|get)|should i buy|permitir|puedo comprar|me alcanza|买得起|能买|可以买/],
   ["safe", /safe to spend|can i spend|how much (can|do) i (have|spend)|left to spend|puedo gastar|cuánto (puedo|tengo)|可以花|能花|还能花/],
   ["due", /due|bills?|owe this week|pay this week|vence|cuentas|facturas|到期|账单|要付/],
@@ -96,7 +103,7 @@ export function trackerPlanItems(i: { trials: Trial[]; returns: ReturnItem[]; io
 }
 
 // ───────── Monthly report ─────────
-export function monthReport(i: { month: string; payments: RentPayment[]; billPaid: Record<string, string[]>; bills: Bill[]; spends: Spend[]; side: SideIncome[]; contribs: Contribution[] }) {
+export function monthReport(i: { month: string; payments: RentPayment[]; billPaid: Record<string, string[]>; bills: Bill[]; spends: Spend[]; side: SideIncome[]; contribs: Contribution[]; debts?: Array<{ id: string; minPaymentCents: number }>; debtPaid?: Record<string, string[]> }) {
   const pays = i.payments.filter((p) => p.month === i.month);
   const rent = pays.reduce((t, p) => t + p.amountCents, 0);
   const lateFees = pays.reduce((t, p) => t + (p.lateFeeCents ?? 0), 0);
@@ -105,6 +112,7 @@ export function monthReport(i: { month: string; payments: RentPayment[]; billPai
   const spent = i.spends.filter((s) => s.date.startsWith(i.month)).reduce((t, s) => t + s.amountCents, 0);
   const side = i.side.filter((s) => s.date.startsWith(i.month)).reduce((t, s) => t + s.amountCents, 0);
   const saved = i.contribs.filter((c) => c.date.startsWith(i.month)).reduce((t, c) => t + c.amountCents, 0);
+  const debtPaid = (i.debts ?? []).filter((d) => (i.debtPaid?.[d.id] ?? []).includes(i.month)).reduce((t, d) => t + d.minPaymentCents, 0);
   const text = [
     `MY MONEY — ${i.month} (Housing Compass)`,
     `Rent paid: ${usd(rent)}${lateFees ? ` (late fees ${usd(lateFees)})` : ""}`,
@@ -112,10 +120,11 @@ export function monthReport(i: { month: string; payments: RentPayment[]; billPai
     `Everyday spending logged: ${usd(spent)}`,
     `Side income: ${usd(side)}`,
     `Added to savings goals: ${usd(saved)}`,
+    ...(debtPaid ? [`Debt minimums paid: ${usd(debtPaid)}`] : []),
     "",
     "From my own records in the app. Not financial advice.",
   ].join("\n");
-  return { month: i.month, rentCents: rent, lateFeesCents: lateFees, billsPaid: billsPaid.length, billsTotal: i.bills.length, billsCents, spentCents: spent, sideCents: side, savedCents: saved, text };
+  return { month: i.month, rentCents: rent, lateFeesCents: lateFees, billsPaid: billsPaid.length, billsTotal: i.bills.length, billsCents, spentCents: spent, sideCents: side, savedCents: saved, debtPaidCents: debtPaid, text };
 }
 export const previousMonth = (today: string) => {
   const [y, m] = today.split("-").map(Number) as [number, number];
@@ -148,8 +157,8 @@ export function purchaseImpact(i: { priceCents: number; hourlyCents: number | nu
 }
 
 // ───────── Badges ─────────
-export type BadgeId = "first_rent" | "on_time_3" | "all_bills_3" | "first_goal" | "debt_free_one" | "emergency_month" | "bill_win" | "under_limit_4" | "challenge_10" | "report_checked" | "net_worth_up" | "side_hustle";
-export function badges(i: { onTimeRentMonths: number; rentMonths: number; allBillsStreak: number; goalsDone: number; debtsPaidOff: number; emergencyMonths: number | null; wins: number; underLimitWeeks: number; challengeWeeks: number; reportChecks: number; netWorthChange: number | null; sideIncomeEntries: number }) {
+export type BadgeId = "debt_min_3" | "first_rent" | "on_time_3" | "all_bills_3" | "first_goal" | "debt_free_one" | "emergency_month" | "bill_win" | "under_limit_4" | "challenge_10" | "report_checked" | "net_worth_up" | "side_hustle";
+export function badges(i: { onTimeRentMonths: number; rentMonths: number; allBillsStreak: number; goalsDone: number; debtsPaidOff: number; emergencyMonths: number | null; wins: number; underLimitWeeks: number; challengeWeeks: number; reportChecks: number; netWorthChange: number | null; sideIncomeEntries: number; debtMinStreak?: number }) {
   const list: Array<{ id: BadgeId; earned: boolean; progress: number; goal: number }> = [
     { id: "first_rent", earned: i.rentMonths >= 1, progress: Math.min(1, i.rentMonths), goal: 1 },
     { id: "on_time_3", earned: i.onTimeRentMonths >= 3, progress: Math.min(3, i.onTimeRentMonths), goal: 3 },
@@ -163,6 +172,7 @@ export function badges(i: { onTimeRentMonths: number; rentMonths: number; allBil
     { id: "report_checked", earned: i.reportChecks >= 1, progress: Math.min(1, i.reportChecks), goal: 1 },
     { id: "net_worth_up", earned: (i.netWorthChange ?? 0) > 0, progress: (i.netWorthChange ?? 0) > 0 ? 1 : 0, goal: 1 },
     { id: "side_hustle", earned: i.sideIncomeEntries >= 5, progress: Math.min(5, i.sideIncomeEntries), goal: 5 },
+    { id: "debt_min_3", earned: (i.debtMinStreak ?? 0) >= 3, progress: Math.min(3, i.debtMinStreak ?? 0), goal: 3 },
   ];
   return { list, earned: list.filter((b) => b.earned).length, total: list.length };
 }

@@ -1156,7 +1156,7 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await page.getByTestId("ask").waitFor();
   await page.getByRole("button", { name: "What's due this week?" }).click();
   await page.getByTestId("ask-answer").first().waitFor();
-  check(/payments due in the next 7 days|Nothing due in the next 7 days/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask answers what's due this week");
+  check(/Due in the next 7 days|Nothing due in the next 7 days/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask answers what's due this week");
   await page.getByTestId("ask-input").fill("Can I afford $20?");
   await page.getByTestId("ask-send").click();
   check(/Yes — it fits/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask answers can I afford");
@@ -1202,6 +1202,68 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await page.getByTestId("aff-price").fill("50");
   await page.getByTestId("aff-check").click();
   check(/hours of work/.test(await page.getByTestId("aff-hours").innerText()), "purchase shown in work hours");
+}
+
+// ── v0.26: debt minimums, paycheck split, lease end, goal order, quick-add spend, Ask (rent, overview, history, follow-ups), combined CSV
+{
+  const iso = (d) => d.toISOString().slice(0, 10);
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-timing-edit").first().click();
+  await page.getByTestId("debt-due-day").fill("10");
+  await page.getByTestId("debt-timing-save").click();
+  await page.getByTestId("debt-min-paid").first().waitFor();
+  check(/Mark .* minimum paid \(due day 10\)/.test(await page.getByTestId("debt-min-paid").first().innerText()), "debt minimum due day set");
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText("Minimum payment due in 5 days").count()) >= 1, "debt minimum appears in My plan");
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-min-paid").first().click();
+  check(/Minimum paid this month/.test(await page.getByTestId("debt-min-paid").first().innerText()), "debt minimum marked paid");
+
+  await page.goto(`${base}/paycheck`);
+  await page.getByTestId("ps-save").click();
+  check((await page.getByTestId("ps-amounts").count()) === 1 && /Savings/.test(await page.getByTestId("ps-amounts").innerText()), "paycheck split amounts shown");
+  await page.getByTestId("ps-amounts").scrollIntoViewIfNeeded();
+  await shot("88-pay-split");
+
+  await page.goto(`${base}/rent`);
+  await page.getByTestId("lease-end").fill(iso(new Date(NOW.getTime() + 60 * 86_400_000)));
+  await page.getByTestId("lease-save").click();
+  check(/60 days until your lease ends/.test(await page.getByTestId("lease-days").innerText()), "lease end countdown");
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/60 days left — renew, negotiate or plan a move/).count()) >= 1, "lease reminder in My plan");
+
+  await page.goto(`${base}/money`);
+  await page.getByTestId("qs-amount").fill("7");
+  await page.getByTestId("qs-add").click();
+  await page.goto(`${base}/spending`);
+  await page.getByTestId("sp-row").first().waitFor();
+  check((await page.getByTestId("sp-row").filter({ hasText: "$7" }).count()) >= 1, "quick-add spend from the Today card");
+
+  await page.goto(`${base}/goals`);
+  await page.getByTestId("goal-card").first().waitFor();
+  if (await page.getByTestId("goal-up").count()) {
+    const first = await page.getByTestId("goal-card").first().innerText();
+    await page.getByTestId("goal-up").first().click();
+    check((await page.getByTestId("goal-card").first().innerText()) !== first, "goals can be reordered");
+  }
+
+  await page.goto(`${base}/ask`);
+  await page.getByTestId("ask-input").fill("How am I doing?");
+  await page.getByTestId("ask-send").click();
+  check((await page.getByTestId("ask-answer").first().innerText()).length > 20 && (await page.getByTestId("ask-followups").count()) === 1, "Ask overview with follow-up questions");
+  await page.getByTestId("ask-input").fill("when is rent due");
+  await page.getByTestId("ask-send").click();
+  check(/Rent of .* is due|rent .* is paid/i.test(await page.getByTestId("ask-answer").first().innerText()), "Ask answers about rent");
+  await shot("89-ask-followups");
+  await page.reload();
+  await page.getByTestId("ask-history").waitFor();
+  check(/when is rent due/.test(await page.getByTestId("ask-history").innerText()), "recent questions remembered");
+
+  await page.goto(`${base}/backup`);
+  await page.getByTestId("csv-all").click();
+  check((await page.getByTestId("csv-all").count()) === 1, "combined CSV export");
 }
 
 // ── v0.15: Spanish filters and message checker

@@ -295,6 +295,8 @@ export interface Debt {
   startBalanceCents?: number;
   /** Credit limit for a card, if the user enters it. */
   limitCents?: number;
+  /** Day of the month the minimum payment is due (1–31), if known. */
+  dueDay?: number;
 }
 
 export interface PayoffResult {
@@ -460,7 +462,7 @@ export const RenterBackupSchema = z.object({
     takeHomeCents: cents.nullable(),
     waitlists: z.array(z.object({ id: shortText(64), programName: shortText(100), joinedOn: day, confirmation: shortText(60), nextCheckIn: day.nullable(), status: z.enum(["waiting", "invited", "closed"]), notes: shortText(500) })).max(50),
     pay: z.object({ frequency: z.enum(["weekly", "biweekly", "semimonthly", "monthly"]), amountCents: cents, anchorDate: day }).nullable(),
-    debts: z.array(z.object({ id: shortText(64), name: shortText(60), balanceCents: cents, apr: z.number().min(0).max(100), minPaymentCents: cents, statementDay: z.number().int().min(1).max(31).optional(), promoEnds: day.optional(), startBalanceCents: cents.optional(), limitCents: cents.optional() })).max(50),
+    debts: z.array(z.object({ id: shortText(64), name: shortText(60), balanceCents: cents, apr: z.number().min(0).max(100), minPaymentCents: cents, statementDay: z.number().int().min(1).max(31).optional(), promoEnds: day.optional(), startBalanceCents: cents.optional(), limitCents: cents.optional(), dueDay: z.number().int().min(1).max(31).optional() })).max(50),
     goals: z.array(z.object({ id: shortText(64), name: shortText(60), targetCents: cents, savedCents: cents, targetDate: day.nullable() })).max(30),
     unusedSubs: z.array(shortText(64)).max(100),
     creditDone: z.array(z.enum(CREDIT_CHECKLIST)).max(20),
@@ -488,6 +490,10 @@ export const RenterBackupSchema = z.object({
     trials: z.array(z.object({ id: shortText(64), name: shortText(60), endsOn: day, costCents: cents, cycle: z.enum(["month", "year"]), canceled: z.boolean() })).max(200).optional(),
     returns: z.array(z.object({ id: shortText(64), item: shortText(60), store: shortText(60), amountCents: cents, returnBy: day, returned: z.boolean() })).max(500).optional(),
     digestHour: z.number().int().min(5).max(11).nullable().optional(),
+    debtPaid: z.record(z.string().max(64), z.array(z.string().regex(/^\d{4}-\d{2}$/)).max(60)).optional(),
+    paySplit: z.object({ bills: z.number().min(0).max(100), savings: z.number().min(0).max(100), debt: z.number().min(0).max(100), spending: z.number().min(0).max(100) }).nullable().optional(),
+    leaseEnd: day.nullable().optional(),
+    askHistory: z.array(shortText(200)).max(10).optional(),
     challenge: z.object({ start: day, reverse: z.boolean(), unitCents: cents, done: z.array(z.number().int().min(1).max(52)).max(52) }).nullable().optional(),
     scores: z.array(z.object({ id: shortText(64), date: day, score: z.number().int().min(300).max(900), source: shortText(60) })).max(500).optional(),
     mileage: z.array(z.object({ id: shortText(64), date: day, miles: z.number().min(0).max(5000), purpose: shortText(80) })).max(5000).optional(),

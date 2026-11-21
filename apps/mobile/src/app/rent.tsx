@@ -14,6 +14,7 @@ import { useT } from "../i18n";
 import { saveAndShare } from "../lib/files";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
 import { LockGate } from "../lib/lock";
+import { LeaseEnd } from "../components/LeaseEnd";
 import { useRenter } from "../state/renter";
 import { color, space, type } from "../theme";
 
@@ -248,6 +249,7 @@ function RentScreen() {
       <Milestones streak={s.onTimeStreak} />
       {payments.length ? <HistoryLetter /> : null}
 
+      <LeaseEnd />
       <Section title={t("rent.remTitle")}>
         <Text style={type.small}>{t("rent.remBody")}</Text>
         <Button kind={remindersOn ? "secondary" : "primary"} icon={remindersOn ? "notifications-off-outline" : "notifications-outline"} label={remindersOn ? t("rent.remTurnOff") : t("rent.remTurnOn")} onPress={toggleReminders} testID="rent-reminders" />

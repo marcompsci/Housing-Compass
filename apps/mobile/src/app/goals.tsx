@@ -87,6 +87,7 @@ function GoalsScreen() {
   const { t } = useT();
   const goals = useRenter((s) => s.goals);
   const contribs = useRenter((s) => s.contribs);
+  const moveUp = useRenter((s) => s.moveGoalUp);
   const streak = savingStreakWeeks(contribs, now());
   const addGoal = useRenter((s) => s.addGoal);
   const [name, setName] = useState("");
@@ -106,9 +107,19 @@ function GoalsScreen() {
           <Text style={[type.body, { flex: 1 }]}>{streak ? t("goal.streak", { n: streak }) : t("goal.noStreak")}</Text>
         </View>
       ) : null}
-      {goals.map((g) => (
-        <GoalCard key={g.id} id={g.id} />
+      {goals.filter((g) => g.savedCents < g.targetCents).map((g, i) => (
+        <View key={g.id} style={{ gap: 4 }}>
+          {i > 0 ? <Button kind="ghost" icon="arrow-up-outline" label={t("gp.up")} onPress={() => moveUp(g.id)} testID="goal-up" /> : goals.filter((x) => x.savedCents < x.targetCents).length > 1 ? <Text style={type.tiny}>{t("gp.top")}</Text> : null}
+          <GoalCard id={g.id} />
+        </View>
       ))}
+      {goals.some((g) => g.savedCents >= g.targetCents) ? (
+        <Section title={t("gp.done")}>
+          {goals.filter((g) => g.savedCents >= g.targetCents).map((g) => (
+            <GoalCard key={g.id} id={g.id} />
+          ))}
+        </Section>
+      ) : null}
       <Section title={t("goal.new")}>
         <View style={formStyles.row}>
           {presets.map((p) => (

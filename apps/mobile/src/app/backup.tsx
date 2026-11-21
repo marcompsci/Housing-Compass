@@ -10,6 +10,8 @@ import { Banner, Button, Section } from "../components/ui";
 import { now } from "../config";
 import { useT } from "../i18n";
 import { shareBackup } from "../lib/backup";
+import { saveAndShare } from "../lib/files";
+import { moneyCsv } from "@housing-compass/core";
 import { LockGate } from "../lib/lock";
 import { useRenter } from "../state/renter";
 import { color, radius, space, type } from "../theme";
@@ -37,6 +39,7 @@ function BackupScreen() {
       <Section title={t("bk.saveTitle")}>
         <Text style={type.small}>{t("bk.saveBody")}</Text>
         <Button icon="download-outline" label={t("bk.save")} onPress={() => void shareBackup(now()).then(() => useRenter.getState().setLastBackup(now().toISOString().slice(0, 10)))} testID="backup-save" />
+        <Button kind="secondary" icon="grid-outline" label={t("csv.all")} onPress={() => { const r = useRenter.getState(); void saveAndShare(`housing-compass-money-${now().toISOString().slice(0, 10)}.csv`, moneyCsv({ bills: r.bills, spends: r.spends, side: r.sideIncome, debts: r.debts }), "text/csv", "public.comma-separated-values-text"); }} testID="csv-all" />
         <Text style={type.tiny} testID="backup-last">{lastBackup ? t("bkl.last", { date: lastBackup }) : t("bkl.never")}</Text>
       </Section>
       <Section title={t("bk.restoreTitle")}>

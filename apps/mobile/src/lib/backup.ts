@@ -52,6 +52,10 @@ export function makeBackup(now: Date): RenterBackup {
       trials: r.trials,
       returns: r.returns,
       digestHour: r.digestHour,
+      debtPaid: r.debtPaid,
+      paySplit: r.paySplit,
+      leaseEnd: r.leaseEnd,
+      askHistory: r.askHistory,
     },
   };
 }

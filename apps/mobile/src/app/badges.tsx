@@ -1,5 +1,5 @@
 /** Badges earned from real progress — on-time rent, bills paid, goals reached, debts paid off and more. */
-import { allPaidStreak, badges, debtProgress, emergencyFund, goalPlan, netWorthHistory, rentSummary, underLimitStreak, type BadgeId } from "@housing-compass/core";
+import { debtMinStreak, allPaidStreak, badges, debtProgress, emergencyFund, goalPlan, netWorthHistory, rentSummary, underLimitStreak, type BadgeId } from "@housing-compass/core";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { today } from "../components/forms";
 import { Banner, Icon, type IconName } from "../components/ui";
@@ -21,6 +21,7 @@ const ICON: Record<BadgeId, IconName> = {
   report_checked: "document-text-outline",
   net_worth_up: "trending-up-outline",
   side_hustle: "car-outline",
+  debt_min_3: "card-outline",
 };
 
 export default function Badges() {
@@ -43,6 +44,7 @@ export default function Badges() {
     reportChecks: r.reportChecks.length,
     netWorthChange: netWorthHistory(r.netWorth).changeCents,
     sideIncomeEntries: r.sideIncome.length,
+    debtMinStreak: debtMinStreak(r.debts, r.debtPaid, n),
   });
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="badges">

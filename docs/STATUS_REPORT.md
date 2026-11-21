@@ -1,4 +1,46 @@
-# Status report — v0.25 (2026-11-20): 30 more phases — a money assistant you can ask
+# Status report — v0.26 (2026-11-20): 30 more phases — a smarter assistant and an everyday routine
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Ask: rent | Next rent amount and due date, or that this month is paid. | `/ask` |
+| 2 | Ask: side income | This month, this year and tax set-aside. | `sideProfit`, `sideGoalProgress` |
+| 3 | Ask: taxes | Next estimated-tax date and set-aside so far. | `estimatedTaxDates` |
+| 4 | Ask: subscriptions | Count, monthly and yearly cost. | Ask |
+| 5 | Ask: free trials | Next trial ending and its price. | `trialStatus` |
+| 6 | Ask: emergency fund | Amount and months of rent + bills it covers. | `emergencyFund` |
+| 7 | Ask: bill by name | "How much is my PG&E?" → amount, due day, paid this month. | `findBillByName` |
+| 8 | Ask: how am I doing | Safe to spend, what's due this week, all-bills-paid streak. | Ask |
+| 9 | Ask history | Last 10 questions saved; recent ones as chips. | `rememberAsk` |
+| 10 | Follow-up questions | Related questions after each answer; all 39 phrasings (en/es/zh) verified to parse. | `FOLLOW_UPS` |
+| 11 | Debt due day | Optional due day for each card or loan minimum. | `Debt.dueDay` |
+| 12 | Debt minimums in My plan | Due within 10 days, or past due this month. | `debtPlanItems` |
+| 13 | Mark minimum paid | Per-debt toggle for this month. | `debtPaid`; Debt payoff |
+| 14 | Minimums count everywhere | Included in safe to spend, week ahead, Can I afford this? and Ask. | `debtObligations`; `lib/moneyNow.ts` |
+| 15 | Morning summary | Minimums included in the daily notification. | `lib/reminders.ts` |
+| 16 | Paid from Today | The Today card's Paid button also handles debt minimums. | Money → Today |
+| 17 | Paycheck split | Bills / savings / debt / spending %, presets and custom, with dollar amounts. | `splitPaycheck`; Paycheck planner |
+| 18 | Split on payday | Payday checklist shows the split of the check. | Money → Today |
+| 19 | Lease end | Date and countdown on the rent screen. | `components/LeaseEnd.tsx` |
+| 20 | Lease reminder | My plan from 90 days before the lease ends. | `leasePlanItems` |
+| 21 | Goal priority | Move a goal up; the top goal is labeled. | Savings goals |
+| 22 | Completed goals | Finished goals move to their own section. | Savings goals |
+| 23 | Quick-add spend | Log a spend right from the Today card. | Money → Today |
+| 24 | Combined CSV | Bills, debts, spends and side income in one file. | `moneyCsv`; Backup |
+| 25 | Report: debt minimums | Monthly report adds minimums paid. | `monthReport` |
+| 26 | Badge | 3 months of debt minimums (13 badges). | `badges` |
+| 27 | Backup & privacy | New data in backups (strict schema), export, clear; deleting a debt clears its paid history. | `RenterBackupSchema` |
+| 28 | Translations | 57 new strings in en/es/zh. | `strings.ts` |
+| 29 | Core tests | 11 new tests. | `test/v026.test.ts` |
+| 30 | Browser checks | 12 new checks; screenshots 88–89. | e2e |
+
+### Tests (all passing)
+- Core: 298 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 218 checks
+
+---
+
+## Previous: v0.25 (2026-11-20): 30 more phases — a money assistant you can ask
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

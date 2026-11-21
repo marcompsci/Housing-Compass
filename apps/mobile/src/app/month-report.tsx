@@ -25,7 +25,7 @@ function MonthReport() {
   const td = today(now());
   const months = [previousMonth(td), td.slice(0, 7)];
   const [month, setMonth] = useState(months[0]!);
-  const rep = monthReport({ month, payments: r.payments, billPaid: r.billPaid, bills: r.bills, spends: r.spends, side: r.sideIncome, contribs: r.contribs });
+  const rep = monthReport({ month, payments: r.payments, billPaid: r.billPaid, bills: r.bills, spends: r.spends, side: r.sideIncome, contribs: r.contribs, debts: r.debts, debtPaid: r.debtPaid });
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="month-report">
       <Banner tone="info" icon="document-text-outline" title={t("mr.title", { month })}>
@@ -43,6 +43,7 @@ function MonthReport() {
         <KV k={t("mr.spent")} v={usd(rep.spentCents)} />
         <KV k={t("yir.side")} v={usd(rep.sideCents)} />
         <KV k={t("yir.saved")} v={usd(rep.savedCents)} />
+        {rep.debtPaidCents ? <KV k={t("mr.debt")} v={usd(rep.debtPaidCents)} /> : null}
       </View>
       <Button icon="share-outline" label={t("yir.share")} onPress={() => void saveAndShare(`money-${month}.txt`, rep.text, "text/plain", "public.plain-text")} testID="mr-share" />
     </ScrollView>

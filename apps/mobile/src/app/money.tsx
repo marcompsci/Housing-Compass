@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { debtObligations, splitPaycheck, SPEND_CATEGORIES, type SpendCategory, underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -31,7 +31,7 @@ function MoneyScreen() {
   const r = useRenter();
   const n = now();
   const from = today(n);
-  const obligations = upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from, days: 45 });
+  const obligations = [...upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from, days: 45 }), ...debtObligations(r.debts, r.debtPaid, from, 45)].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const plan = r.pay ? paycheckPlan(r.pay, obligations, from) : null;
   const next = plan?.buckets[0] ?? null;
   const fc = r.startBalanceCents !== null ? cashFlowForecast(r.startBalanceCents, r.pay, obligations, from, 30) : null;
@@ -42,6 +42,8 @@ function MoneyScreen() {
   const allPaid = allPaidStreak(r.bills, r.billPaid, n);
   const pdc = r.pay ? paydayChecklist({ paydays: paydays(r.pay, from, 45), today: from, obligations }) : null;
   const tip = tipOfTheDay(from);
+  const [qsCat, setQsCat] = useState<SpendCategory>("food");
+  const [qsAmt, setQsAmt] = useState("");
   const [bal, setBal] = useState(r.startBalanceCents !== null ? String(r.startBalanceCents / 100) : "");
   const [q, setQ] = useState("");
   const wk = weekSpending(r.spends, r.weeklyLimitCents, from);
@@ -147,7 +149,7 @@ function MoneyScreen() {
               <View style={{ flex: 1 }}>
                 <KV k={`${o.dueDate === from ? t("today.today") : o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
               </View>
-              {o.kind === "bill" ? <Button kind="ghost" icon="checkmark-circle-outline" label={t("today.paid")} onPress={() => r.markBillPaid(o.id.split(":")[1]!, o.dueDate.slice(0, 7))} testID="week-paid" /> : null}
+              {o.kind === "bill" ? <Button kind="ghost" icon="checkmark-circle-outline" label={t("today.paid")} onPress={() => (o.id.startsWith("debt:") ? r.toggleDebtPaid(o.id.split(":")[1]!, o.id.split(":")[2]!) : r.markBillPaid(o.id.split(":")[1]!, o.dueDate.slice(0, 7)))} testID="week-paid" /> : null}
             </View>
           ))}
         </View>
@@ -182,8 +184,30 @@ function MoneyScreen() {
             {pdc.items.map((o) => (
               <KV key={o.id} k={`${o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
             ))}
+            {r.paySplit && r.pay ? (
+              <View testID="payday-split">
+                <Text style={[type.small, { fontWeight: "700" }]}>{t("ps.fromCheck", { amount: usd(r.pay.amountCents) })}</Text>
+                {(["bills", "savings", "debt", "spending"] as const).map((k) => (
+                  <KV key={k} k={t(`ps.${k}`)} v={usd(splitPaycheck(r.pay!.amountCents, r.paySplit!)?.rows[k] ?? 0)} />
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : null}
+        <View style={[formStyles.card, { gap: 6 }]} testID="quick-spend">
+          <Text style={[type.small, { fontWeight: "700" }]}>{t("qs.title")}</Text>
+          <View style={formStyles.row}>
+            {SPEND_CATEGORIES.slice(0, 4).map((c) => (
+              <Chip key={c} label={t(`spc.${c}`)} selected={qsCat === c} onPress={() => setQsCat(c)} />
+            ))}
+          </View>
+          <View style={formStyles.row}>
+            <View style={{ flex: 1, minWidth: 120 }}>
+              <Field label={t("side.amount")} value={qsAmt} onChangeText={setQsAmt} keyboardType="decimal-pad" testID="qs-amount" />
+            </View>
+            <Button kind="secondary" icon="add-circle-outline" label={t("sp.add")} onPress={() => { const c = toCents(qsAmt); if (c > 0) { r.addSpend({ date: from, amountCents: c, note: "", category: qsCat }); setQsAmt(""); } }} testID="qs-add" />
+          </View>
+        </View>
         <Text style={[type.small, { fontWeight: "700" }]}>{t("dg.title")}</Text>
         <View style={formStyles.row} testID="digest">
           {[null, 7, 8, 9].map((h) => (

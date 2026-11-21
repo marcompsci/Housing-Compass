@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.25). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.26). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -49,7 +49,9 @@ GET OUT OF DEBT AND BUILD CREDIT
 
 ASK YOUR MONEY ASSISTANT
 • Ask in plain words — "Can I afford $40?", "What's due this week?", "When is payday?" — in English, Spanish or Chinese. Answers come from your own data on your phone; nothing is sent anywhere.
+• Ask about rent, side income, taxes, subscriptions, trials, your emergency fund or any bill by name — or just "How am I doing?"
 • Get a morning summary on days something is due.
+• Track card and loan minimums with due days, split each paycheck, and get a heads-up before your lease ends.
 • Track free trials and returns so you never pay for something you meant to cancel.
 • Monthly money report and badges for real progress.
 

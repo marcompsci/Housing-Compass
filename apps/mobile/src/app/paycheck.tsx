@@ -12,6 +12,7 @@ import { now } from "../config";
 import { useT } from "../i18n";
 import { LockGate } from "../lib/lock";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
+import { PaySplitForm } from "../components/PaySplitForm";
 import { useRenter } from "../state/renter";
 import { color, radius, space, type } from "../theme";
 
@@ -110,6 +111,7 @@ function PaycheckScreen() {
         </Section>
       ) : null}
 
+      <PaySplitForm />
       <Section title={t("pay.forecastTitle")}>
         <Field label={t("pay.balance")} value={bal} onChangeText={setBal} keyboardType="numbers-and-punctuation" hint={t("pay.balanceHint")} testID="start-balance" />
         <Button

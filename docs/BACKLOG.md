@@ -52,6 +52,13 @@
 ## Done in v0.25
 - Ask assistant (rules-based, en/es/zh), morning digest, streaks, trials & returns, roommate nudges, monthly report, purchase impact, badges
 
+## Done in v0.26
+- #44 more Ask intents (rent, side income, taxes, subscriptions, trials, emergency, bill lookup, overview), debt minimums with due days, paycheck split, lease end, goal order, quick-add spend, combined CSV
+
+## Next ideas (after v0.26)
+46. Voice input for Ask (needs speech recognition permission)
+47. Lease renewal letter template (with counsel review)
+
 ## Next ideas (after v0.25)
 44. Ask: more intents (rent increase, side income, taxes) and voice input
 45. Native-speaker review of Ask examples and answers

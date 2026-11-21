@@ -3,7 +3,7 @@
  * week?", "¿cuándo me pagan?") from the user's own data on this phone. Rules-based — no AI
  * service, nothing is sent anywhere.
  */
-import { canAfford, cardUtilization, goalEta, monthRecap, netWorthNow, parseAsk, payoffPlan, purchaseImpact, scoreTrend, weekAhead, weekSpending, type AskIntent } from "@housing-compass/core";
+import { allPaidStreak, emergencyFund, estimatedTaxDates, findBillByName, FOLLOW_UPS, sideGoalProgress, sideProfit, trialStatus, canAfford, cardUtilization, goalEta, monthRecap, netWorthNow, parseAsk, payoffPlan, purchaseImpact, scoreTrend, weekAhead, weekSpending, type AskIntent } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -16,7 +16,7 @@ import { useMoneyNow } from "../lib/moneyNow";
 import { useRenter } from "../state/renter";
 import { color, radius, space, type } from "../theme";
 
-type Turn = { q: string; a: string; link?: { label: string; href: string } };
+type Turn = { q: string; a: string; intent?: AskIntent; link?: { label: string; href: string } };
 
 export default function AskRoute() {
   return (
@@ -36,7 +36,14 @@ function Ask() {
   const examples = [t("ask.ex.due"), t("ask.ex.afford"), t("ask.ex.safe"), t("ask.ex.debt"), t("ask.ex.payday"), t("ask.ex.credit")];
 
   const answer = (text: string): Turn => {
-    const { intent, amountCents } = parseAsk(text);
+    const parsed = parseAsk(text);
+    const { amountCents } = parsed;
+    const bill = findBillByName(text, r.bills);
+    if (bill && (parsed.intent === "unknown" || parsed.intent === "due" || parsed.intent === "budget")) {
+      const paid = (r.billPaid[bill.id] ?? []).includes(td.slice(0, 7));
+      return { q: text, intent: "due", a: t("ask.a.bill", { name: bill.name, amount: usd(bill.amountCents), day: bill.dueDay, status: paid ? t("ask.a.billPaid") : t("ask.a.billUnpaid") }), link: { label: t("plan.toolBills"), href: "/bills" } };
+    }
+    const intent = parsed.intent;
     const need = { a: t("today.needBalance"), link: { label: t("money.paycheck"), href: "/paycheck" } };
     const by: Record<AskIntent, () => Omit<Turn, "q">> = {
       afford: () => {
@@ -83,14 +90,57 @@ function Ask() {
         const target = r.goals.reduce((s, g) => s + g.targetCents, 0);
         return { a: t("ask.a.save", { saved: usd(saved), target: usd(target), n: r.goals.length }), link: { label: t("money.goals"), href: "/goals" } };
       },
+      rent: () => {
+        if (!r.rentSetup) return { a: t("ask.a.noRent"), link: { label: t("rent.setupTitle"), href: "/rent" } };
+        const next = m.obligations.find((o) => o.kind === "rent");
+        return { a: next ? t("ask.a.rent", { amount: usd(next.amountCents), date: next.dueDate }) : t("ask.a.rentPaid", { amount: usd(r.rentSetup.amountCents) }), link: { label: t("rent.setupTitle"), href: "/rent" } };
+      },
+      side: () => {
+        const p = sideProfit({ income: r.sideIncome, miles: r.mileage, expenses: r.sideExpenses, setAsidePct: r.sideSetAsidePct, now: now() });
+        const g = sideGoalProgress(r.sideIncome, r.sideGoalCents, now());
+        return { a: t("ask.a.side", { month: usd(g.earnedCents), year: usd(p.grossCents), setAside: usd(p.setAsideCents) }), link: { label: t("side.title"), href: "/side-income" } };
+      },
+      tax: () => {
+        const y = Number(td.slice(0, 4));
+        const next = [...estimatedTaxDates(y - 1), ...estimatedTaxDates(y), ...estimatedTaxDates(y + 1)].find((d) => d.due >= td);
+        const p = sideProfit({ income: r.sideIncome, miles: r.mileage, expenses: r.sideExpenses, setAsidePct: r.sideSetAsidePct, now: now() });
+        return { a: t("ask.a.tax", { date: next?.due ?? "", amount: usd(p.setAsideCents) }), link: { label: t("side.title"), href: "/side-income" } };
+      },
+      subs: () => {
+        const subs = r.bills.filter((b) => b.category === "subscription");
+        const monthly = subs.reduce((s, b) => s + b.amountCents, 0);
+        return subs.length ? { a: t("ask.a.subs", { n: subs.length, amount: usd(monthly), year: usd(monthly * 12) }), link: { label: t("plan.toolBills"), href: "/bills" } } : { a: t("ask.a.noSubs") };
+      },
+      trials: () => {
+        const s = trialStatus(r.trials, td);
+        const next = s.rows.find((x) => !x.canceled && x.daysLeft >= 0);
+        return { a: next ? t("ask.a.trial", { name: next.name, date: next.endsOn, amount: usd(next.costCents) }) : t("ask.a.noTrials"), link: { label: t("tr.title"), href: "/trials" } };
+      },
+      emergency: () => {
+        const essentials = (r.rentSetup?.amountCents ?? 0) + r.bills.reduce((s, b) => s + b.amountCents, 0);
+        const ef = emergencyFund(r.emergencyCents ?? 0, essentials);
+        return { a: ef.months === null ? t("ask.a.noEssentials") : t("ask.a.emergency", { amount: usd(r.emergencyCents ?? 0), months: Math.round(ef.months * 10) / 10 }), link: { label: t("money.title"), href: "/money" } };
+      },
+      overview: () => {
+        const parts = [
+          m.sts ? (m.sts.shortCents ? t("today.short", { date: m.sts.until }) : t("ask.a.safe", { amount: usd(m.sts.safeCents), date: m.sts.until, day: usd(m.sts.perDayCents) })) : "",
+          (() => {
+            const w = weekAhead(m.obligations, m.from);
+            return w.items.length ? t("ask.a.due", { n: w.items.length, amount: usd(w.totalCents), list: w.items.slice(0, 3).map((o) => o.name).join(", ") }) : t("today.weekClear");
+          })(),
+          allPaidStreak(r.bills, r.billPaid, now()) ? t("today.allPaid", { n: allPaidStreak(r.bills, r.billPaid, now()) }) + "." : "",
+        ].filter(Boolean);
+        return { a: parts.join(" ") };
+      },
       unknown: () => ({ a: t("ask.a.unknown") }),
     };
-    return { q: text, ...by[intent]() };
+    return { q: text, intent, ...by[intent]() };
   };
 
   const submit = (text: string) => {
     if (!text.trim()) return;
     setTurns([answer(text.trim()), ...turns].slice(0, 20));
+    r.addAskHistory(text.trim());
     setQ("");
   };
 
@@ -110,6 +160,16 @@ function Ask() {
           <Chip key={e} label={e} onPress={() => submit(e)} />
         ))}
       </View>
+      {r.askHistory.length && !turns.length ? (
+        <View style={{ gap: 6 }} testID="ask-history">
+          <Text style={[type.small, { fontWeight: "700" }]}>{t("ask.recent")}</Text>
+          <View style={formStyles.row}>
+            {r.askHistory.slice(0, 5).map((h) => (
+              <Chip key={h} label={h} onPress={() => submit(h)} />
+            ))}
+          </View>
+        </View>
+      ) : null}
       {turns.map((x, i) => (
         <View key={turns.length - i} style={{ gap: 6 }} testID="ask-turn">
           <View style={[styles.bubble, styles.me]}>
@@ -120,6 +180,13 @@ function Ask() {
               {x.a}
             </Text>
             {x.link ? <Button kind="ghost" icon="arrow-forward-outline" label={x.link.label} onPress={() => router.push(x.link!.href as never)} /> : null}
+            {i === 0 && x.intent && FOLLOW_UPS[x.intent]?.length ? (
+              <View style={formStyles.row} testID="ask-followups">
+                {FOLLOW_UPS[x.intent]!.map((f) => (
+                  <Chip key={f} label={t(`ask.q.${f as "safe"}`)} onPress={() => submit(t(`ask.q.${f as "safe"}`))} />
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
       ))}
