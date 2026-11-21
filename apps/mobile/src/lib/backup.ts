@@ -49,6 +49,9 @@ export function makeBackup(now: Date): RenterBackup {
       roundedSpendIds: r.roundedSpendIds,
       lastBackupAt: r.lastBackupAt,
       hideAmounts: r.hideAmounts,
+      trials: r.trials,
+      returns: r.returns,
+      digestHour: r.digestHour,
     },
   };
 }

@@ -2,7 +2,10 @@
  * Can I afford this? Checks a one-time purchase against what's safe to spend today and the
  * 30-day forecast, and says yes, tight, wait until payday, or no. Device-only.
  */
-import { canAfford } from "@housing-compass/core";
+import { canAfford, goalEta, purchaseImpact } from "@housing-compass/core";
+import { today } from "../components/forms";
+import { now } from "../config";
+import { useRenter } from "../state/renter";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -24,6 +27,7 @@ export default function AffordRoute() {
 function Afford() {
   const { t } = useT();
   const m = useMoneyNow();
+  const r = useRenter();
   const [price, setPrice] = useState("");
   const [res, setRes] = useState<ReturnType<typeof canAfford> | null>(null);
   const tone = res ? { yes: color.verified, tight: color.warn, wait: color.warn, no: color.danger }[res.verdict] : color.ink;
@@ -58,6 +62,16 @@ function Afford() {
               </View>
               <Text style={type.body}>{res.verdict === "wait" ? t("aff.waitBody", { date: res.waitUntil ?? "" }) : t(`aff.b.${res.verdict}`, { left: usd(Math.abs(res.leftCents)) })}</Text>
               {res.lowestAfterCents !== null ? <KV k={t("aff.lowest")} v={usd(res.lowestAfterCents)} /> : null}
+              {(() => {
+                const g = r.goals[0];
+                const imp = purchaseImpact({ priceCents: toCents(price), hourlyCents: r.hourlyCents, goalPerWeekCents: g ? goalEta(g, r.contribs, today(now())).perWeekCents : null });
+                return (
+                  <>
+                    {imp.hours !== null ? <Text style={type.small} testID="aff-hours">{t("ask.a.hours", { n: imp.hours })}</Text> : null}
+                    {imp.goalDelayWeeks !== null && g ? <Text style={type.small}>{t("ask.a.delay", { n: imp.goalDelayWeeks, goal: g.name })}</Text> : null}
+                  </>
+                );
+              })()}
             </View>
           ) : null}
         </>

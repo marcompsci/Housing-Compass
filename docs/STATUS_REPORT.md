@@ -1,4 +1,46 @@
-# Status report — v0.24 (2026-11-20): 25 more phases — habits, budgets and peace of mind
+# Status report — v0.25 (2026-11-20): 30 more phases — a money assistant you can ask
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Ask | Type a question; rules-based, answers from on-device data, nothing sent anywhere. | `core/assistant.ts` `parseAsk`; `/ask` |
+| 2 | Ask: due | Payments in the next 7 days with total. | `weekAhead` |
+| 3 | Ask: afford | Verdict for a price in the question. | `canAfford` |
+| 4 | Ask: safe to spend | Amount until payday and per day. | `safeToSpend` |
+| 5 | Ask: payday | Next payday. | `paydays` |
+| 6 | Ask: debt | Total owed, debt-free months and interest at minimums. | `payoffPlan` |
+| 7 | Ask: budget | Spent this week and month vs limit. | `weekSpending`, `monthRecap` |
+| 8 | Ask: net worth | Current net worth. | `netWorthNow` |
+| 9 | Ask: credit | Card use and latest score you entered. | `cardUtilization`, `scoreTrend` |
+| 10 | Ask: savings | Saved vs target across goals. | Ask |
+| 11 | Ask in 3 languages | Spanish and Chinese keywords; example chips in each language. | `parseAsk` |
+| 12 | Ask help | Fallback explains what it can answer; answers link to the right tool. | Ask |
+| 13 | Ask bar | Tap-to-ask bar at the top of the money hub. | Money hub |
+| 14 | Morning summary | Local notification on days something is due, with names and total. | `dailyDigest`; `lib/reminders.ts` |
+| 15 | Summary time | Off / 7 / 8 / 9 AM. | Money → Today |
+| 16 | Streaks row | All-bills-paid, under-limit and saving streaks together. | Money → Today |
+| 17 | Free trials | Name, end date, price after trial; cancel/remove. | `trialStatus`; `/trials` |
+| 18 | Trial cost | What active trials would cost a year; what canceling saved. | `trialStatus` |
+| 19 | Trial reminders | In My plan up to 5 days before the trial ends. | `trackerPlanItems` |
+| 20 | Returns | Item, store, amount, return-by date; mark returned. | `returnStatus` |
+| 21 | Return reminders | In My plan up to 7 days before the deadline. | `trackerPlanItems` |
+| 22 | Roommate nudge | Someone has owed you for 14+ days → reminder. | `trackerPlanItems` |
+| 23 | Monthly report | Rent, late fees, bills paid, spending, side income, savings; shareable. | `monthReport`; `/month-report` |
+| 24 | Report in My plan | First 5 days of each month. | `trackerPlanItems` |
+| 25 | Purchase in work hours | Shown in Can I afford this? and Ask. | `purchaseImpact` |
+| 26 | Goal delay | How many weeks a purchase pushes back your first goal. | `purchaseImpact`, `goalEta` |
+| 27 | Badges | 12 badges from real progress, with progress counts. | `badges`; `/badges` |
+| 28 | Links | Ask, trials, report, badges in the money hub; Ask in My plan tools. |  |
+| 29 | Backup, privacy, translations | New data in backups (strict schema), export, clear, Face ID lock; 94 new strings in en/es/zh. | `RenterBackupSchema` |
+| 30 | Tests | 8 new core tests (incl. 12 Ask phrasings); 11 new browser checks. | `test/v025.test.ts`, e2e |
+
+### Tests (all passing)
+- Core: 287 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 206 checks, screenshots 85–87
+
+---
+
+## Previous: v0.24 (2026-11-20): 25 more phases — habits, budgets and peace of mind
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

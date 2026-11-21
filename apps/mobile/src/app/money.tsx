@@ -3,14 +3,14 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { formStyles, today, usd } from "../components/forms";
-import { Banner, Button, Icon, Section, Tag, type IconName, KV } from "../components/ui";
+import { Banner, Button, Icon, Section, Tag, type IconName, KV, Chip } from "../components/ui";
 import { now } from "../config";
 import { useT } from "../i18n";
 import { LockGate } from "../lib/lock";
@@ -82,6 +82,10 @@ function MoneyScreen() {
     { icon: "file-tray-stacked-outline", label: t("yr.title"), sub: r.yearly.length ? t("yr.hubSub", { amount: usd(yearlyPlan(r.yearly, now()).monthlyTotalCents) }) : t("yr.sub"), href: "/yearly", testID: "tool-yearly" },
     { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
     { icon: "cart-outline", label: t("sp.title"), sub: t("sp.sub"), href: "/spending", testID: "tool-spending" },
+    { icon: "chatbubbles-outline", label: t("ask.title"), sub: t("ask.sub"), href: "/ask", testID: "tool-ask" },
+    { icon: "hourglass-outline", label: t("tr.title"), sub: t("tr.sub"), href: "/trials", testID: "tool-trials" },
+    { icon: "document-text-outline", label: t("mr.link"), sub: t("mr.sub"), href: "/month-report", testID: "tool-month-report" },
+    { icon: "ribbon-outline", label: t("bd.link"), sub: t("bd.sub"), href: "/badges", testID: "tool-badges" },
     { icon: "trending-up-outline", label: t("nw.title"), sub: t("nw.sub"), href: "/net-worth", testID: "tool-net-worth" },
     { icon: "calendar-number-outline", label: t("ch.title"), sub: r.challenge ? t("ch.hubSub", { n: r.challenge.done.length }) : t("ch.sub"), href: "/challenge", testID: "tool-challenge" },
     { icon: "help-circle-outline", label: t("aff.title"), sub: t("aff.sub"), href: "/afford", testID: "tool-afford" },
@@ -115,6 +119,12 @@ function MoneyScreen() {
           </View>
         );
       })()}
+
+      <Pressable onPress={() => router.push("/ask")} accessibilityRole="button" style={[formStyles.card, { flexDirection: "row", alignItems: "center", gap: 10, borderColor: color.brand }]} testID="open-ask">
+        <Icon name="chatbubbles-outline" size={22} tint={color.brand} />
+        <Text style={[type.body, { flex: 1, color: color.muted }]}>{t("ask.hubPh")}</Text>
+        <Icon name="chevron-forward" tint={color.muted} />
+      </Pressable>
 
       <View style={[formStyles.row, { alignItems: "center" }]}>
         <View style={[formStyles.card, { flex: 1, flexDirection: "row", gap: 8, alignItems: "flex-start" }]} testID="tip">
@@ -151,7 +161,20 @@ function MoneyScreen() {
           <Button style={{ flex: 1 }} icon="help-circle-outline" label={t("aff.title")} onPress={() => router.push("/afford")} testID="today-afford" />
           <Button style={{ flex: 1 }} kind="secondary" icon="cart-outline" label={r.weeklyLimitCents ? t("today.spendLeft", { amount: usd(wk.leftCents ?? 0) }) : t("sp.title")} onPress={() => router.push("/spending")} testID="today-spending" />
         </View>
-        {allPaid ? <Tag label={t("today.allPaid", { n: allPaid })} tone="good" /> : null}
+        {(() => {
+          const streaks = [
+            allPaid ? t("today.allPaid", { n: allPaid }) : "",
+            underLimitStreak(r.spends, r.weeklyLimitCents, from) ? t("sp.streak", { n: underLimitStreak(r.spends, r.weeklyLimitCents, from) }) : "",
+            savingStreakWeeks(r.contribs, n) ? t("goal.streak", { n: savingStreakWeeks(r.contribs, n) }) : "",
+          ].filter(Boolean);
+          return streaks.length ? (
+            <View style={formStyles.row} testID="streaks">
+              {streaks.map((s) => (
+                <Tag key={s} label={s} tone="good" />
+              ))}
+            </View>
+          ) : null;
+        })()}
         {pdc ? (
           <View style={[formStyles.card, { backgroundColor: color.brandSoft }]} testID="payday-list">
             <Text style={type.h3}>{t("pd.title", { date: pdc.payday })}</Text>
@@ -161,6 +184,12 @@ function MoneyScreen() {
             ))}
           </View>
         ) : null}
+        <Text style={[type.small, { fontWeight: "700" }]}>{t("dg.title")}</Text>
+        <View style={formStyles.row} testID="digest">
+          {[null, 7, 8, 9].map((h) => (
+            <Chip key={String(h)} label={h === null ? t("dg.off") : t("dg.at", { h })} selected={r.digestHour === h} onPress={() => r.setDigestHour(h)} />
+          ))}
+        </View>
         <Text style={type.tiny}>{t("today.note")}</Text>
       </Section>
 

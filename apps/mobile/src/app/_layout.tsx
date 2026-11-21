@@ -74,6 +74,10 @@ export default function RootLayout() {
         <Stack.Screen name="scores" options={{ title: "Score journal" }} />
         <Stack.Screen name="net-worth" options={{ title: "Net worth" }} />
         <Stack.Screen name="challenge" options={{ title: "52-week challenge" }} />
+        <Stack.Screen name="ask" options={{ title: "Ask" }} />
+        <Stack.Screen name="trials" options={{ title: "Trials & returns" }} />
+        <Stack.Screen name="month-report" options={{ title: "Monthly report" }} />
+        <Stack.Screen name="badges" options={{ title: "Badges" }} />
         <Stack.Screen name="split" options={{ title: "Split with roommates" }} />
         <Stack.Screen name="backup" options={{ title: "Backup & restore" }} />
         <Stack.Screen name="setup" options={{ title: "Quick setup" }} />

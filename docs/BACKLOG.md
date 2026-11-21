@@ -49,6 +49,13 @@
 ## Done in v0.24
 - #40 privacy mode, #41 weekly spending chart; plus budgets, round-ups, habits, payday checklist, bill price history, debt interest and strategy compare, goal ETA, backup reminder
 
+## Done in v0.25
+- Ask assistant (rules-based, en/es/zh), morning digest, streaks, trials & returns, roommate nudges, monthly report, purchase impact, badges
+
+## Next ideas (after v0.25)
+44. Ask: more intents (rent increase, side income, taxes) and voice input
+45. Native-speaker review of Ask examples and answers
+
 ## Next ideas (after v0.24)
 42. Native-speaker review of the 12 daily tips
 43. Home-screen widget (needs a native extension)

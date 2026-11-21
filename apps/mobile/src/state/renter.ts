@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type ReturnItem, type Trial, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -73,6 +73,16 @@ interface RenterState {
   roundedSpendIds: string[];
   lastBackupAt: string | null;
   hideAmounts: boolean;
+  trials: Trial[];
+  returns: ReturnItem[];
+  digestHour: number | null;
+  addTrial(x: Omit<Trial, "id" | "canceled">): void;
+  cancelTrial(id: string): void;
+  removeTrial(id: string): void;
+  addReturn(x: Omit<ReturnItem, "id" | "returned">): void;
+  markReturned(id: string): void;
+  removeReturn(id: string): void;
+  setDigestHour(h: number | null): void;
   setCategoryBudget(c: SpendCategory, cents: number | null): void;
   markRoundUpsMoved(ids: string[]): void;
   setLastBackup(date: string): void;
@@ -152,7 +162,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false, trials: [], returns: [], digestHour: null };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -188,6 +198,13 @@ export const useRenter = create<RenterState>()(
       markRoundUpsMoved: (ids) => set({ roundedSpendIds: [...get().roundedSpendIds, ...ids].slice(-5000) }),
       setLastBackup: (lastBackupAt) => set({ lastBackupAt }),
       setHideAmounts: (hideAmounts) => set({ hideAmounts }),
+      addTrial: (x) => set({ trials: [...get().trials, { ...x, id: uuid(), canceled: false }].slice(-200) }),
+      cancelTrial: (id) => set({ trials: get().trials.map((x) => (x.id === id ? { ...x, canceled: true } : x)) }),
+      removeTrial: (id) => set({ trials: get().trials.filter((x) => x.id !== id) }),
+      addReturn: (x) => set({ returns: [...get().returns, { ...x, id: uuid(), returned: false }].slice(-500) }),
+      markReturned: (id) => set({ returns: get().returns.map((x) => (x.id === id ? { ...x, returned: true } : x)) }),
+      removeReturn: (id) => set({ returns: get().returns.filter((x) => x.id !== id) }),
+      setDigestHour: (digestHour) => set({ digestHour }),
       removeBill: (id) => {
         const { [id]: _gone, ...billPaid } = get().billPaid;
         set({ bills: get().bills.filter((b) => b.id !== id), billPaid, unusedSubs: get().unusedSubs.filter((x) => x !== id) });
@@ -307,6 +324,9 @@ export const useRenter = create<RenterState>()(
           roundedSpendIds: b.data.roundedSpendIds ?? [],
           lastBackupAt: b.data.lastBackupAt ?? null,
           hideAmounts: b.data.hideAmounts ?? false,
+          trials: b.data.trials ?? [],
+          returns: b.data.returns ?? [],
+          digestHour: b.data.digestHour ?? null,
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

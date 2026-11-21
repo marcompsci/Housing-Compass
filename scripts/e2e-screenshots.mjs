@@ -1148,6 +1148,62 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await shot("84-debt-interest");
 }
 
+// ── v0.25: Ask assistant, morning digest, streaks, trials & returns, monthly report, badges, purchase in work hours
+{
+  const iso = (d) => d.toISOString().slice(0, 10);
+  await page.goto(`${base}/money`);
+  await page.getByTestId("open-ask").click();
+  await page.getByTestId("ask").waitFor();
+  await page.getByRole("button", { name: "What's due this week?" }).click();
+  await page.getByTestId("ask-answer").first().waitFor();
+  check(/payments due in the next 7 days|Nothing due in the next 7 days/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask answers what's due this week");
+  await page.getByTestId("ask-input").fill("Can I afford $20?");
+  await page.getByTestId("ask-send").click();
+  check(/Yes — it fits/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask answers can I afford");
+  await page.getByTestId("ask-input").fill("¿Cuándo es mi día de pago?");
+  await page.getByTestId("ask-send").click();
+  check(/next payday is|couldn't find a payday|Add your pay schedule/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask understands Spanish questions");
+  await page.getByTestId("ask-input").fill("hello");
+  await page.getByTestId("ask-send").click();
+  check(/I can answer questions/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask explains what it can answer");
+  await shot("85-ask");
+
+  await page.goto(`${base}/money`);
+  await page.getByTestId("digest").getByRole("button", { name: "8 AM" }).click();
+  check((await page.getByTestId("digest").count()) === 1, "morning summary notification setting");
+
+  await page.goto(`${base}/trials`);
+  await page.getByTestId("tr-name").fill("StreamPlus");
+  await page.getByTestId("tr-ends").fill(iso(new Date(NOW.getTime() + 2 * 86_400_000)));
+  await page.getByTestId("tr-cost-input").fill("15.99");
+  await page.getByTestId("tr-add").click();
+  check(/\$191\.88 a year/.test(await page.getByTestId("tr-cost").innerText()), "free trial yearly cost shown");
+  await page.getByTestId("rt-item").fill("Jacket");
+  await page.getByTestId("rt-store").fill("Target");
+  await page.getByTestId("rt-amount").fill("60");
+  await page.getByTestId("rt-by").fill(iso(new Date(NOW.getTime() + 5 * 86_400_000)));
+  await page.getByTestId("rt-add").click();
+  check(/\$60 you can still get back/.test(await page.getByTestId("rt-open").innerText()), "open returns tracked");
+  await shot("86-trials");
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/StreamPlus free trial ends/).count()) >= 1 && (await page.getByText(/Return Jacket to Target/).count()) >= 1, "trial and return reminders in My plan");
+
+  await page.goto(`${base}/month-report`);
+  await page.getByTestId("mr-card").waitFor();
+  check(/Bills paid/.test(await page.getByTestId("mr-card").innerText()), "monthly report shown");
+
+  await page.goto(`${base}/badges`);
+  await page.getByTestId("badges").waitFor();
+  check((await page.getByTestId("badge-earned").count()) >= 1, "badges earned from real progress");
+  await shot("87-badges");
+
+  await page.goto(`${base}/afford`);
+  await page.getByTestId("aff-price").fill("50");
+  await page.getByTestId("aff-check").click();
+  check(/hours of work/.test(await page.getByTestId("aff-hours").innerText()), "purchase shown in work hours");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();
