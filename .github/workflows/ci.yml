@@ -1,0 +1,84 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core:
+    name: Core domain tests + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - name: Seed is reproducible and contains only unverified leads
+        run: |
+          npm run seed:build
+          grep -q "SOURCE_LISTED_UNVERIFIED" supabase/seed/seed.sql
+          ! grep -E "'(OFFICIAL_PORTAL|PROPERTY_MANAGER_VERIFIED)'" supabase/seed/seed.sql
+
+  database:
+    name: Migrations + RLS/trust tests (Postgres 16 + PostGIS)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npm ci
+      - run: npm run seed:build
+      - run: bash scripts/db-test.sh
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+  web-e2e:
+    name: Web build + browser e2e (acceptance criteria)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run web:export
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: screenshots, path: docs/screenshots }
+
+  security:
+    name: Secret scan + dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Fail on high/critical advisories in production deps
+        run: npm audit --omit=dev --audit-level=high
+      - name: No service-role keys in client code
+        run: "! grep -rniE 'service_role|SUPABASE_SERVICE_ROLE_KEY' apps/mobile/src"
+
+  edge-functions:
+    name: Edge functions typecheck (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - run: cd supabase/functions && deno check --config deno.json ingest/index.ts notify/index.ts health/index.ts
