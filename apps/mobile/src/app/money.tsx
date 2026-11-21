@@ -1,0 +1,333 @@
+/**
+ * Money: one screen for paychecks, debts, credit, savings and "found money". Shows today's
+ * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
+ * and links to each tool. Everything is calculated on the phone.
+ */
+import { underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { useState } from "react";
+import { Field, toCents } from "../components/forms";
+import { askReminderPermission, remindersSupported } from "../lib/reminders";
+import { router } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { formStyles, today, usd } from "../components/forms";
+import { Banner, Button, Icon, Section, Tag, type IconName, KV, Chip } from "../components/ui";
+import { now } from "../config";
+import { useT } from "../i18n";
+import { LockGate } from "../lib/lock";
+import { PrivacyToggle } from "../components/PrivacyToggle";
+import { useRenter } from "../state/renter";
+import { HIT, color, radius, space, type } from "../theme";
+
+export default function Money() {
+  return (
+    <LockGate>
+      <MoneyScreen />
+    </LockGate>
+  );
+}
+
+function MoneyScreen() {
+  const { t } = useT();
+  const r = useRenter();
+  const n = now();
+  const from = today(n);
+  const obligations = upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from, days: 45 });
+  const plan = r.pay ? paycheckPlan(r.pay, obligations, from) : null;
+  const next = plan?.buckets[0] ?? null;
+  const fc = r.startBalanceCents !== null ? cashFlowForecast(r.startBalanceCents, r.pay, obligations, from, 30) : null;
+  const debt = r.debts.length ? payoffPlan(r.debts, 0, "avalanche") : null;
+  const nextPay = r.pay ? (paydays(r.pay, from, 45).find((d) => d > from) ?? null) : null;
+  const sts = r.startBalanceCents !== null ? safeToSpend({ balanceCents: r.startBalanceCents, obligations, nextPayday: nextPay, today: from }) : null;
+  const week = weekAhead(obligations, from);
+  const allPaid = allPaidStreak(r.bills, r.billPaid, n);
+  const pdc = r.pay ? paydayChecklist({ paydays: paydays(r.pay, from, 45), today: from, obligations }) : null;
+  const tip = tipOfTheDay(from);
+  const [bal, setBal] = useState(r.startBalanceCents !== null ? String(r.startBalanceCents / 100) : "");
+  const [q, setQ] = useState("");
+  const wk = weekSpending(r.spends, r.weeklyLimitCents, from);
+  const won = savingsWon(r.negotiations, r.bills, r.unusedSubs);
+  const essentials = (r.rentSetup?.amountCents ?? 0) + r.bills.reduce((s, b) => s + b.amountCents, 0);
+  const ef = emergencyFund(r.emergencyCents ?? 0, essentials);
+  const [efText, setEfText] = useState(r.emergencyCents !== null ? String(r.emergencyCents / 100) : "");
+  const [remMsg, setRemMsg] = useState<string | null>(null);
+  const check = moneyCheck({
+    onTimeStreak: r.rentSetup ? rentSummary(r.rentSetup, r.payments, n).onTimeStreak : 0,
+    overdueBills: billStatuses(r.bills, r.billPaid, n).filter((b) => b.state === "overdue").length,
+    hasPaySetup: !!r.pay,
+    forecastGoesNegative: fc ? fc.goesNegative : null,
+    emergencyMonths: ef.months,
+    utilization: null,
+    utilizationConfirmed: r.creditDone.includes("utilization"),
+    creditStepsDone: r.creditDone.length,
+    creditStepsTotal: CREDIT_CHECKLIST.length,
+    hasGoal: r.goals.length > 0,
+  });
+  const nextHref: Record<string, string> = { rent_on_time: "/rent", no_overdue: "/bills", paycheck_plan: "/paycheck", emergency: "/money", utilization: "/credit", credit_steps: "/credit", goal: "/goals" };
+  const side = sideIncomeSummary(r.sideIncome, r.mileage, r.sideSetAsidePct, now());
+  const earn: Array<{ icon: IconName; label: string; sub: string; href: string; testID: string }> = [
+    { icon: "car-outline", label: t("side.title"), sub: side.earnedMonthCents ? t("earn.sideSub", { amount: usd(side.earnedMonthCents) }) : t("earn.sideEmpty"), href: "/side-income", testID: "earn-side" },
+    { icon: "gift-outline", label: t("money.found"), sub: t("money.foundSub"), href: "/found-money", testID: "earn-found" },
+    { icon: "wallet-outline", label: t("dep.title"), sub: t("dep.sub"), href: "/deposit-interest", testID: "earn-deposit" },
+    { icon: "trending-up-outline", label: t("inc.link"), sub: t("earn.incSub"), href: "/rent-increase", testID: "earn-increase" },
+  ];
+  const tools: Array<{ icon: IconName; label: string; sub: string; href: string; testID: string }> = [
+    { icon: "wallet-outline", label: t("money.paycheck"), sub: t("money.paycheckSub"), href: "/paycheck", testID: "tool-paycheck" },
+    { icon: "cloud-upload-outline", label: t("money.import"), sub: t("money.importSub"), href: "/import", testID: "tool-import" },
+    { icon: "trending-down-outline", label: t("money.debts"), sub: t("money.debtsSub"), href: "/debts", testID: "tool-debts" },
+    { icon: "speedometer-outline", label: t("money.credit"), sub: t("money.creditSub"), href: "/credit", testID: "tool-credit" },
+    { icon: "flag-outline", label: t("money.goals"), sub: t("money.goalsSub"), href: "/goals", testID: "tool-goals" },
+    { icon: "people-outline", label: t("money.split"), sub: t("money.splitSub"), href: "/split", testID: "tool-split" },
+    { icon: "calendar-number-outline", label: t("cal.title"), sub: t("plan.calSub"), href: "/calendar", testID: "tool-calendar" },
+    { icon: "mail-outline", label: t("let.title"), sub: t("let.sub"), href: "/letters", testID: "tool-letters" },
+    { icon: "file-tray-stacked-outline", label: t("yr.title"), sub: r.yearly.length ? t("yr.hubSub", { amount: usd(yearlyPlan(r.yearly, now()).monthlyTotalCents) }) : t("yr.sub"), href: "/yearly", testID: "tool-yearly" },
+    { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
+    { icon: "cart-outline", label: t("sp.title"), sub: t("sp.sub"), href: "/spending", testID: "tool-spending" },
+    { icon: "chatbubbles-outline", label: t("ask.title"), sub: t("ask.sub"), href: "/ask", testID: "tool-ask" },
+    { icon: "hourglass-outline", label: t("tr.title"), sub: t("tr.sub"), href: "/trials", testID: "tool-trials" },
+    { icon: "document-text-outline", label: t("mr.link"), sub: t("mr.sub"), href: "/month-report", testID: "tool-month-report" },
+    { icon: "ribbon-outline", label: t("bd.link"), sub: t("bd.sub"), href: "/badges", testID: "tool-badges" },
+    { icon: "trending-up-outline", label: t("nw.title"), sub: t("nw.sub"), href: "/net-worth", testID: "tool-net-worth" },
+    { icon: "calendar-number-outline", label: t("ch.title"), sub: r.challenge ? t("ch.hubSub", { n: r.challenge.done.length }) : t("ch.sub"), href: "/challenge", testID: "tool-challenge" },
+    { icon: "help-circle-outline", label: t("aff.title"), sub: t("aff.sub"), href: "/afford", testID: "tool-afford" },
+    { icon: "sparkles-outline", label: t("wf.title"), sub: t("wf.sub"), href: "/windfall", testID: "tool-windfall" },
+    { icon: "analytics-outline", label: t("sc.title"), sub: t("sc.sub"), href: "/scores", testID: "tool-scores" },
+    { icon: "trophy-outline", label: t("win.title"), sub: won.asked ? t("win.hubSub", { amount: usd(won.nextYearCents) }) : t("win.sub"), href: "/wins", testID: "tool-wins" },
+    { icon: "shield-checkmark-outline", label: t("ct.title"), sub: t("ct.sub"), href: "/credit-tools", testID: "tool-credit-tools" },
+    { icon: "people-circle-outline", label: t("rm.title"), sub: t("rm.sub"), href: "/roommates", testID: "tool-roommates" },
+    { icon: "save-outline", label: t("money.backup"), sub: t("money.backupSub"), href: "/backup", testID: "tool-backup" },
+  ];
+
+  return (
+    <ScrollView contentContainerStyle={styles.wrap} testID="money">
+      {!r.setupDone && !r.pay ? (
+        <Banner tone="info" icon="sparkles-outline" title={t("money.setupTitle")}>
+          {t("money.setupBody")}
+        </Banner>
+      ) : null}
+      {!r.setupDone && !r.pay ? <Button icon="rocket-outline" label={t("money.setupStart")} onPress={() => router.push("/setup")} testID="setup-start" /> : null}
+
+      {(() => {
+        const sp = setupProgress({ pay: !!r.pay, balance: r.startBalanceCents !== null, rent: !!r.rentSetup, bills: r.bills.length, debts: r.debts.length, goals: r.goals.length, emergency: r.emergencyCents !== null, weeklyLimit: r.weeklyLimitCents !== null, remindersOn: r.remindersOn });
+        if (sp.done === sp.total) return null;
+        return (
+          <View style={formStyles.card} testID="setup-progress">
+            <Text style={type.h3}>{t("sup.title", { done: sp.done, total: sp.total })}</Text>
+            <View style={{ height: 8, borderRadius: 8, backgroundColor: color.neutralSoft, overflow: "hidden" }}>
+              <View style={{ height: "100%", width: `${sp.pct}%`, backgroundColor: color.brand }} />
+            </View>
+            {sp.next ? <Button kind="secondary" icon="arrow-forward-circle-outline" label={t("sup.next", { step: t(`sup.s.${sp.next.id}`) })} onPress={() => router.push(sp.next!.href as never)} testID="setup-next" /> : null}
+          </View>
+        );
+      })()}
+
+      <Pressable onPress={() => router.push("/ask")} accessibilityRole="button" style={[formStyles.card, { flexDirection: "row", alignItems: "center", gap: 10, borderColor: color.brand }]} testID="open-ask">
+        <Icon name="chatbubbles-outline" size={22} tint={color.brand} />
+        <Text style={[type.body, { flex: 1, color: color.muted }]}>{t("ask.hubPh")}</Text>
+        <Icon name="chevron-forward" tint={color.muted} />
+      </Pressable>
+
+      <View style={[formStyles.row, { alignItems: "center" }]}>
+        <View style={[formStyles.card, { flex: 1, flexDirection: "row", gap: 8, alignItems: "flex-start" }]} testID="tip">
+          <Icon name="bulb-outline" size={20} tint={color.warn} />
+          <Text style={[type.small, { flex: 1 }]}>{t(`tip.${tip}`)}</Text>
+        </View>
+        <PrivacyToggle />
+      </View>
+
+      <Section title={t("today.title")}>
+        <View style={[styles.tile, { flexBasis: "auto" }, sts?.shortCents ? { backgroundColor: color.dangerSoft } : { backgroundColor: color.verifiedSoft }]} testID="safe-to-spend">
+          <Text style={type.tiny}>{t("today.safe")}</Text>
+          <Text style={[type.title, sts?.shortCents ? { color: color.danger } : null]}>{sts ? (sts.shortCents ? `-${usd(sts.shortCents)}` : usd(sts.safeCents)) : "—"}</Text>
+          <Text style={type.small}>{sts ? (sts.shortCents ? t("today.short", { date: sts.until }) : t("today.safeLine", { date: sts.until, day: usd(sts.perDayCents), n: sts.dueCount })) : t("today.needBalance")}</Text>
+        </View>
+        <Text style={[type.small, { fontWeight: "700" }]}>{week.items.length ? t("today.week", { amount: usd(week.totalCents), n: week.items.length }) : t("today.weekClear")}</Text>
+        <View testID="week-ahead">
+          {week.items.map((o) => (
+            <View key={o.id + o.dueDate} style={formStyles.row}>
+              <View style={{ flex: 1 }}>
+                <KV k={`${o.dueDate === from ? t("today.today") : o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
+              </View>
+              {o.kind === "bill" ? <Button kind="ghost" icon="checkmark-circle-outline" label={t("today.paid")} onPress={() => r.markBillPaid(o.id.split(":")[1]!, o.dueDate.slice(0, 7))} testID="week-paid" /> : null}
+            </View>
+          ))}
+        </View>
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 150 }}>
+            <Field label={t("today.balance")} value={bal} onChangeText={setBal} keyboardType="decimal-pad" testID="today-balance" />
+          </View>
+          <Button kind="secondary" label={t("today.update")} onPress={() => { const c = Number(bal.replace(/[$,\s]/g, "")); if (bal.trim() && Number.isFinite(c)) r.setStartBalance(Math.round(c * 100)); }} testID="today-balance-save" />
+        </View>
+        <View style={formStyles.row}>
+          <Button style={{ flex: 1 }} icon="help-circle-outline" label={t("aff.title")} onPress={() => router.push("/afford")} testID="today-afford" />
+          <Button style={{ flex: 1 }} kind="secondary" icon="cart-outline" label={r.weeklyLimitCents ? t("today.spendLeft", { amount: usd(wk.leftCents ?? 0) }) : t("sp.title")} onPress={() => router.push("/spending")} testID="today-spending" />
+        </View>
+        {(() => {
+          const streaks = [
+            allPaid ? t("today.allPaid", { n: allPaid }) : "",
+            underLimitStreak(r.spends, r.weeklyLimitCents, from) ? t("sp.streak", { n: underLimitStreak(r.spends, r.weeklyLimitCents, from) }) : "",
+            savingStreakWeeks(r.contribs, n) ? t("goal.streak", { n: savingStreakWeeks(r.contribs, n) }) : "",
+          ].filter(Boolean);
+          return streaks.length ? (
+            <View style={formStyles.row} testID="streaks">
+              {streaks.map((s) => (
+                <Tag key={s} label={s} tone="good" />
+              ))}
+            </View>
+          ) : null;
+        })()}
+        {pdc ? (
+          <View style={[formStyles.card, { backgroundColor: color.brandSoft }]} testID="payday-list">
+            <Text style={type.h3}>{t("pd.title", { date: pdc.payday })}</Text>
+            <Text style={type.small}>{pdc.items.length ? t("pd.body", { n: pdc.items.length, amount: usd(pdc.totalCents), until: pdc.until }) : t("pd.none")}</Text>
+            {pdc.items.map((o) => (
+              <KV key={o.id} k={`${o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
+            ))}
+          </View>
+        ) : null}
+        <Text style={[type.small, { fontWeight: "700" }]}>{t("dg.title")}</Text>
+        <View style={formStyles.row} testID="digest">
+          {[null, 7, 8, 9].map((h) => (
+            <Chip key={String(h)} label={h === null ? t("dg.off") : t("dg.at", { h })} selected={r.digestHour === h} onPress={() => r.setDigestHour(h)} />
+          ))}
+        </View>
+        <Text style={type.tiny}>{t("today.note")}</Text>
+      </Section>
+
+      <Section title={t("money.snapshot")}>
+        <View style={styles.tiles} testID="money-snapshot">
+          <View style={styles.tile}>
+            <Text style={type.tiny}>{t("money.nextPayday")}</Text>
+            <Text style={type.h3}>{next ? next.payday : "—"}</Text>
+            {next ? <Text style={type.small}>{t("money.setAside", { amount: usd(next.setAsideCents) })}</Text> : <Text style={type.small}>{t("money.addPay")}</Text>}
+          </View>
+          <View style={[styles.tile, fc?.goesNegative && { backgroundColor: color.dangerSoft }]}>
+            <Text style={type.tiny}>{t("money.lowest")}</Text>
+            <Text style={[type.h3, fc?.goesNegative && { color: color.danger }]}>{fc ? usd(fc.lowest.balanceCents) : "—"}</Text>
+            <Text style={type.small}>{fc ? fc.lowest.date : t("money.addBalance")}</Text>
+          </View>
+          <View style={styles.tile}>
+            <Text style={type.tiny}>{t("money.debtFree")}</Text>
+            <Text style={type.h3}>{debt ? (debt.feasible ? t("money.months", { n: debt.months }) : t("money.never")) : "—"}</Text>
+            <Text style={type.small}>{debt ? t("money.minsOnly") : t("money.noDebts")}</Text>
+          </View>
+          <View style={styles.tile}>
+            <Text style={type.tiny}>{t("money.goalsTile")}</Text>
+            <Text style={type.h3}>{r.goals.length ? `${Math.round((r.goals.reduce((s, g) => s + goalPlan(g, n, r.pay).progress, 0) / r.goals.length) * 100)}%` : "—"}</Text>
+            <Text style={type.small}>{r.goals.length ? t("money.goalsCount", { n: r.goals.length }) : t("money.noGoals")}</Text>
+          </View>
+        </View>
+        {fc?.goesNegative ? <Text style={[type.small, { color: color.danger, fontWeight: "700" }]}>{t("money.negativeWarn", { date: fc.lowest.date })}</Text> : null}
+      </Section>
+
+      <Section title={t("mc.title")}>
+        <View style={formStyles.row} testID="money-check">
+          <View style={styles.score}>
+            <Text style={[type.title, { color: color.brandInk }]}>{check.score}</Text>
+            <Text style={[type.tiny, { color: color.brandInk }]}>/ 100</Text>
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            {check.items.map((it) => {
+              const ok = it.ok;
+              return (
+                <View key={it.id} style={formStyles.row}>
+                  <Icon name={ok ? "checkmark-circle" : "ellipse-outline"} size={16} tint={ok ? color.verified : color.muted} />
+                  <Text style={[type.tiny, { flex: 1 }]}>{t(`mc.i.${it.id}`)}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+        {check.next ? <Button kind="secondary" icon="arrow-forward-outline" label={t(`mc.next.${check.next}`)} onPress={() => router.push(nextHref[check.next!] as never)} testID="money-check-next" /> : <Text style={[type.small, { color: color.verified, fontWeight: "700" }]}>{t("mc.allDone")}</Text>}
+        <Text style={type.tiny}>{t("mc.note")}</Text>
+      </Section>
+
+      <Section title={t("ef.title")}>
+        <Text style={type.small}>{t("ef.body")}</Text>
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <Field label={t("ef.saved")} value={efText} onChangeText={setEfText} keyboardType="decimal-pad" testID="ef-saved" />
+          </View>
+          <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => r.setEmergency(toCents(efText) >= 0 ? toCents(efText) : null)} testID="ef-save" />
+        </View>
+        {ef.months !== null ? (
+          <View style={{ gap: 4 }} testID="ef-meter">
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${Math.min(100, Math.round((ef.months / 3) * 100))}%` }]} />
+            </View>
+            <Text style={[type.small, { fontWeight: "700" }]}>{t("ef.months", { n: ef.months })}</Text>
+            {ef.toThreeMonthsCents ? <Text style={type.tiny}>{t("ef.toThree", { amount: usd(ef.toThreeMonthsCents) })}</Text> : <Text style={[type.tiny, { color: color.verified }]}>{t("ef.strong")}</Text>}
+          </View>
+        ) : (
+          <Text style={type.tiny}>{t("ef.needRent")}</Text>
+        )}
+      </Section>
+
+      <Section title={t("earn.title")}>
+        <Text style={type.small}>{t("earn.body")}</Text>
+        {earn.map((x) => (
+          <Pressable key={x.href} onPress={() => router.push(x.href as never)} accessibilityRole="button" style={styles.item} testID={x.testID}>
+            <View style={[styles.iconBox, { backgroundColor: color.verifiedSoft }]}>
+              <Icon name={x.icon} size={20} tint={color.verified} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={type.h3}>{x.label}</Text>
+              <Text style={type.tiny}>{x.sub}</Text>
+            </View>
+            <Icon name="chevron-forward" tint={color.muted} />
+          </Pressable>
+        ))}
+      </Section>
+
+      <Section title={t("money.tools")}>
+        <Field label={t("tools.search")} value={q} onChangeText={setQ} autoCapitalize="none" testID="tools-search" />
+        {tools.filter((x) => !q.trim() || `${x.label} ${x.sub}`.toLowerCase().includes(q.trim().toLowerCase())).map((x) => (
+          <Pressable key={x.href} onPress={() => router.push(x.href as never)} accessibilityRole="button" style={styles.item} testID={x.testID}>
+            <View style={styles.iconBox}>
+              <Icon name={x.icon} size={20} tint={color.brand} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={type.h3}>{x.label}</Text>
+              <Text style={type.tiny}>{x.sub}</Text>
+            </View>
+            <Icon name="chevron-forward" tint={color.muted} />
+          </Pressable>
+        ))}
+      </Section>
+      <Section title={t("wk.title")}>
+        <Text style={type.small}>{t("wk.body")}</Text>
+        <Button
+          kind={r.weeklyCheckIn ? "secondary" : "primary"}
+          icon="notifications-outline"
+          label={r.weeklyCheckIn ? t("wk.off") : t("wk.on")}
+          testID="weekly-toggle"
+          onPress={async () => {
+            if (r.weeklyCheckIn) return r.setWeeklyCheckIn(false);
+            if (!remindersSupported) return setRemMsg(t("rent.remWeb"));
+            const ok = await askReminderPermission();
+            if (ok) {
+              r.setWeeklyCheckIn(true);
+              r.setRemindersOn(true);
+            }
+            setRemMsg(ok ? t("rent.remOn") : t("rent.remDenied"));
+          }}
+        />
+        {remMsg ? <Text style={type.tiny} testID="weekly-msg">{remMsg}</Text> : null}
+      </Section>
+      <View style={formStyles.row}>
+        <Tag label={t("money.notAdvice")} />
+      </View>
+      <Text style={type.tiny}>{t("plan.privacy")}</Text>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
+  score: { width: 76, height: 76, borderRadius: 38, backgroundColor: color.brand, alignItems: "center", justifyContent: "center" },
+  track: { height: 10, borderRadius: radius.md, backgroundColor: color.neutralSoft, overflow: "hidden" },
+  fill: { height: "100%", backgroundColor: color.verified },
+  tiles: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  tile: { flexGrow: 1, flexBasis: 150, padding: 12, borderRadius: radius.md, backgroundColor: color.brandSoft, gap: 2 },
+  item: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: HIT, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
+  iconBox: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: color.brandSoft, alignItems: "center", justifyContent: "center" },
+});
