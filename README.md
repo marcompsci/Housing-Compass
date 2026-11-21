@@ -5,7 +5,7 @@ Find affordable rooms, shared housing, studios, one-bedrooms and income-restrict
 Housing Compass shows **only official or manager-verified homes by default**. Unverified leads appear only after a warning, in their own labeled section, and every card shows its source, rent basis (per bed / room / unit), all-in monthly cost, fees, and when it was last verified.
 
 - **Repository:** https://github.com/marcompsci/Housing-Compass
-- **Status:** v0.26. Built and tested locally, installed on iPhone as a demo build. Not yet connected to a live Supabase backend. See [`docs/STATUS_REPORT.md`](docs/STATUS_REPORT.md).
+- **Status:** v0.27. Built and tested locally, installed on iPhone as a demo build. Not yet connected to a live Supabase backend. See [`docs/STATUS_REPORT.md`](docs/STATUS_REPORT.md).
 - **Platforms:** iOS, Android and web from one Expo codebase
 - **Languages:** English, Spanish and Simplified Chinese (translations pending native-speaker review)
 
@@ -27,7 +27,7 @@ Housing Compass shows **only official or manager-verified homes by default**. Un
 
 ```bash
 npm install                 # Node 20+
-npm test                    # 298 core tests
+npm test                    # 305 core tests
 npm run typecheck
 cd apps/mobile
 npx expo start --web        # run in a browser
@@ -41,7 +41,7 @@ Copy `.env.example` to `apps/mobile/.env` to change demo mode, the map style, or
 ```bash
 npm run seed:build && npm run db:test   # migrations + seeds + 21 SQL trust/RLS sections + DB↔app contract tests
 npm run edge:check                      # Deno typecheck of the edge functions
-npm run web:export && npm run e2e       # 218 browser checks + screenshots in docs/screenshots/
+npm run web:export && npm run e2e       # 233 browser checks + screenshots in docs/screenshots/
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of these, plus a secret scan and a dependency audit, on every push and pull request.

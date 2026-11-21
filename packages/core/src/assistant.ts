@@ -19,8 +19,13 @@ const daysBetween = (a: string, b: string) => Math.round((noon(b).getTime() - no
 const usd = (c: number) => `${c < 0 ? "-" : ""}$${(Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: Math.abs(c) % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 // ───────── Ask: intent parsing ─────────
-export type AskIntent = "afford" | "due" | "safe" | "payday" | "debt" | "budget" | "net_worth" | "credit" | "save" | "rent" | "side" | "tax" | "subs" | "trials" | "emergency" | "overview" | "unknown";
+export type AskIntent = "afford" | "due" | "safe" | "payday" | "debt" | "budget" | "net_worth" | "credit" | "save" | "rent" | "side" | "tax" | "subs" | "trials" | "emergency" | "overview" | "category" | "roommates" | "lease" | "pay_first" | "biggest" | "unknown";
 const RULES: Array<[AskIntent, RegExp]> = [
+  ["roommates", /owes? me|who owes|roommate|me debe|me deben|compañer|室友|欠我/],
+  ["pay_first", /pay first|prioriti[sz]e|what should i pay|which bill first|qué (pago|debo pagar) primero|先付|先还|优先/],
+  ["biggest", /biggest|largest|most expensive|más (grande|cara|caro)|最大|最贵/],
+  ["lease", /lease|contrato|租约/],
+  ["category", /spen[dt] on|spending on|gast[eéo] en|花在|花了多少在/],
   ["overview", /how am i doing|how'?s my money|overview|cómo voy|cómo estoy|resumen|我(的)?财务(怎么样|状况)|我做得怎么样|总览/],
   ["trials", /trial|prueba gratis|试用/],
   ["subs", /subscription|suscripci|订阅/],

@@ -17,6 +17,20 @@ import { color, space, type } from "../theme";
 
 const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
 
+function PayInfoRow({ id, name, value }: { id: string; name: string; value: string }) {
+  const { t } = useT();
+  const save = useRenter((s) => s.setBillPayInfo);
+  const [v, setV] = useState(value);
+  return (
+    <View style={formStyles.row} testID="payinfo-row">
+      <View style={{ flex: 1, minWidth: 180 }}>
+        <Field label={name} value={v} onChangeText={setV} placeholder={t("pi.ph")} testID="payinfo-input" />
+      </View>
+      <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => save(id, v)} testID="payinfo-save" />
+    </View>
+  );
+}
+
 function ProofRow({ id, month, name, amount, note }: { id: string; month: string; name: string; amount: string; note: string }) {
   const { t } = useT();
   const setNote = useRenter((s) => s.setBillNote);
@@ -156,6 +170,7 @@ export default function Bills() {
                     {t(`bills.c.${s.bill.category}`)} · {t("bills.dueOn", { date: s.nextDue })}
                     {s.bill.autopay ? ` · ${t("bills.autopayShort")}` : ""}
                     {billPriceTrend(r.billHistory, s.bill) ? ` · ${t("bh.trend", { from: usd(billPriceTrend(r.billHistory, s.bill)!.firstCents), pct: billPriceTrend(r.billHistory, s.bill)!.pct })}` : ""}
+                    {r.billPayInfo[s.bill.id] ? ` · ${t("pi.short", { info: r.billPayInfo[s.bill.id]! })}` : ""}
                     {s.bill.promoEnds ? ` · ${t("bp.ends", { date: s.bill.promoEnds })}` : ""}
                     {r.hourlyCents ? ` · ${t("hrs.short", { n: hoursToCover(s.bill.amountCents, r.hourlyCents) ?? 0 })}` : ""}
                   </Text>
@@ -262,6 +277,16 @@ export default function Bills() {
             </Section>
           );
         })()}
+
+        {r.bills.length ? (
+          <Section title={t("pi.title")}>
+            <Text style={type.small}>{t("pi.body")}</Text>
+            {r.bills.slice(0, 12).map((b) => (
+              <PayInfoRow key={b.id} id={b.id} name={b.name} value={r.billPayInfo[b.id] ?? ""} />
+            ))}
+            <Text style={type.tiny}>{t("pi.noSecrets")}</Text>
+          </Section>
+        ) : null}
 
         {r.bills.length ? (
           <Section title={t("yc.title", { amount: usd(yearlyBillCost(r.bills).totalCents) })}>

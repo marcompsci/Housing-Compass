@@ -1266,6 +1266,72 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   check((await page.getByTestId("csv-all").count()) === 1, "combined CSV export");
 }
 
+// ── v0.27: next up, plan filters, hide for today, pay-first when short, settings & clear section, favorites & undo, where to pay, debt milestones, new Ask topics
+{
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("next-up").waitFor();
+  check((await page.getByTestId("next-up").count()) === 1, "next up card in My plan");
+  const before = await page.getByTestId("plan-item").count();
+  await page.getByTestId("plan-hide").first().click();
+  check((await page.getByTestId("plan-item").count()) === before - 1, "plan item hidden for today");
+  await page.getByTestId("plan-filters").getByRole("button", { name: "Home" }).click();
+  check((await page.getByTestId("plan-item").count()) < before, "plan filters narrow the list");
+  await shot("90-plan-focus");
+  await page.getByTestId("plan-filters").getByRole("button", { name: "All" }).click();
+
+  await page.goto(`${base}/money`);
+  await page.getByTestId("today-balance").fill("-100");
+  await page.getByTestId("today-balance-save").click();
+  await page.getByTestId("pay-first").waitFor();
+  check(/pay in this order/.test(await page.getByTestId("pay-first").innerText()), "pay-first order shown when money is short");
+  await page.getByTestId("pay-first").scrollIntoViewIfNeeded();
+  await shot("91-pay-first");
+  await page.getByTestId("today-balance").fill("5000");
+  await page.getByTestId("today-balance-save").click();
+  check((await page.getByTestId("pay-first").count()) === 0, "pay-first hidden when there's enough");
+
+  await page.goto(`${base}/settings`);
+  await page.getByTestId("set-save").click();
+  check((await page.getByTestId("set-msg").innerText()) === "Saved.", "money settings save");
+  await page.getByTestId("clear-scores").click();
+  check(/Score journal cleared/.test(await page.getByTestId("set-msg").innerText()), "one section cleared");
+  await page.goto(`${base}/scores`);
+  await page.getByTestId("scores").waitFor();
+  check((await page.getByTestId("sc-latest").count()) === 0, "cleared section is empty");
+
+  await page.goto(`${base}/spending`);
+  await page.getByTestId("sp-amount").fill("3.25");
+  await page.getByTestId("sp-add").click();
+  await page.getByTestId("sp-undo").click();
+  check((await page.getByTestId("sp-undo").count()) === 0 && (await page.getByTestId("sp-row").filter({ hasText: "$3.25" }).count()) === 0, "undo last spend");
+  await page.getByTestId("fav-save").click();
+  await page.getByTestId("fav-spends").waitFor();
+  check((await page.getByTestId("fav-spends").count()) === 1, "favorite spends saved");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("payinfo-input").first().fill("pge.com");
+  await page.getByTestId("payinfo-save").first().click();
+  check((await page.getByText(/pay: pge\.com/).count()) >= 1, "where to pay saved on the bill");
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-timing-edit").first().click();
+  await page.getByTestId("debt-balance-update").fill("0");
+  await page.getByTestId("debt-timing-save").click();
+  check(/paid off/.test(await page.getByTestId("debt-cheer").first().innerText()), "debt payoff milestone celebrated");
+
+  await page.goto(`${base}/ask`);
+  await page.getByTestId("ask-input").fill("what should I pay first?");
+  await page.getByTestId("ask-send").click();
+  check(/Suggested order|Nothing is due/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask: what to pay first");
+  await page.getByTestId("ask-input").fill("how much did I spend on coffee");
+  await page.getByTestId("ask-send").click();
+  check(/on Coffee this month/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask: spending by category");
+  await page.getByTestId("ask-input").fill("what's my biggest bill");
+  await page.getByTestId("ask-send").click();
+  check(/biggest monthly costs/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask: biggest costs");
+  await shot("92-ask-more");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

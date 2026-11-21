@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { debtObligations, splitPaycheck, SPEND_CATEGORIES, type SpendCategory, underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { coverage, payPriority, debtObligations, splitPaycheck, SPEND_CATEGORIES, type SpendCategory, underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -85,6 +85,7 @@ function MoneyScreen() {
     { icon: "ribbon-outline", label: t("yir.link"), sub: t("yir.sub"), href: "/year-review", testID: "tool-year-review" },
     { icon: "cart-outline", label: t("sp.title"), sub: t("sp.sub"), href: "/spending", testID: "tool-spending" },
     { icon: "chatbubbles-outline", label: t("ask.title"), sub: t("ask.sub"), href: "/ask", testID: "tool-ask" },
+    { icon: "settings-outline", label: t("set.title"), sub: t("set.sub"), href: "/settings", testID: "tool-settings" },
     { icon: "hourglass-outline", label: t("tr.title"), sub: t("tr.sub"), href: "/trials", testID: "tool-trials" },
     { icon: "document-text-outline", label: t("mr.link"), sub: t("mr.sub"), href: "/month-report", testID: "tool-month-report" },
     { icon: "ribbon-outline", label: t("bd.link"), sub: t("bd.sub"), href: "/badges", testID: "tool-badges" },
@@ -163,6 +164,27 @@ function MoneyScreen() {
           <Button style={{ flex: 1 }} icon="help-circle-outline" label={t("aff.title")} onPress={() => router.push("/afford")} testID="today-afford" />
           <Button style={{ flex: 1 }} kind="secondary" icon="cart-outline" label={r.weeklyLimitCents ? t("today.spendLeft", { amount: usd(wk.leftCents ?? 0) }) : t("sp.title")} onPress={() => router.push("/spending")} testID="today-spending" />
         </View>
+        {sts?.shortCents ? (
+          <View style={[formStyles.card, { borderColor: color.danger }]} testID="pay-first">
+            <Text style={type.h3}>{t("pf3.title")}</Text>
+            <Text style={type.small}>{t("pf3.body")}</Text>
+            {coverage(payPriority(obligations.filter((o) => o.dueDate <= new Date(Date.parse(`${from}T12:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10)), r.bills), r.startBalanceCents ?? 0).map((o, i) => (
+              <View key={o.id} style={formStyles.row}>
+                <Text style={[type.small, { width: 22, fontWeight: "800" }]}>{i + 1}.</Text>
+                <Text style={[type.small, { flex: 1 }]}>
+                  {o.name} · {usd(o.amountCents)} · {o.dueDate}
+                </Text>
+                <Tag label={o.covered ? t(`pf3.r.${o.reason}`) : t("pf3.short")} tone={o.covered ? "neutral" : "warn"} />
+              </View>
+            ))}
+            <Text style={[type.small, { fontWeight: "700" }]}>{t("pf3.help")}</Text>
+            <View style={formStyles.row}>
+              <Button kind="secondary" icon="document-text-outline" label={t("pf3.letters")} onPress={() => router.push("/letters")} testID="pay-first-letters" />
+              <Button kind="ghost" icon="gift-outline" label={t("money.found")} onPress={() => router.push("/found-money")} />
+            </View>
+            <Text style={type.tiny}>{t("pf3.note")}</Text>
+          </View>
+        ) : null}
         {(() => {
           const streaks = [
             allPaid ? t("today.allPaid", { n: allPaid }) : "",

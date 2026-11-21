@@ -33,6 +33,7 @@ function Spending() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [cat, setCat] = useState<SpendCategory>("food");
+  const [undo, setUndo] = useState(false);
   const recap = monthRecap(r.spends, td.slice(0, 7));
   const weeks = weeklyTotals(r.spends, td, 8);
   const maxWeek = Math.max(1, ...weeks.map((x) => x.cents), r.weeklyLimitCents ?? 0);
@@ -77,6 +78,16 @@ function Spending() {
             <Field label={t("sp.note")} value={note} onChangeText={setNote} testID="sp-note" />
           </View>
         </View>
+        {r.favSpends.length ? (
+          <View style={{ gap: 4 }} testID="fav-spends">
+            <Text style={[type.small, { fontWeight: "700" }]}>{t("fav.title")}</Text>
+            <View style={formStyles.row}>
+              {r.favSpends.map((f, i) => (
+                <Chip key={i} label={`${f.note || t(`spc.${f.category}`)} ${usd(f.amountCents)}`} onPress={() => (r.addSpend({ date: td, amountCents: f.amountCents, note: f.note, category: f.category }), setUndo(true))} />
+              ))}
+            </View>
+          </View>
+        ) : null}
         <Button
           icon="add-circle-outline"
           label={t("sp.add")}
@@ -85,9 +96,14 @@ function Spending() {
             const c = toCents(amount);
             if (!(c > 0)) return;
             r.addSpend({ date: td, amountCents: c, note: note.trim().slice(0, 60), category: cat });
+            setUndo(true);
             setAmount("");
           }}
         />
+        <View style={formStyles.row}>
+          {undo && r.spends[0] ? <Button kind="ghost" icon="arrow-undo-outline" label={t("fav.undo", { amount: usd(r.spends[0].amountCents) })} onPress={() => (r.removeLastSpend(), setUndo(false))} testID="sp-undo" /> : null}
+          {r.spends[0] ? <Button kind="ghost" icon="star-outline" label={t("fav.save")} onPress={() => r.addFavSpend({ amountCents: r.spends[0]!.amountCents, category: r.spends[0]!.category ?? "other", note: r.spends[0]!.note })} testID="fav-save" /> : null}
+        </View>
         {r.spends.filter((s) => s.date >= w.weekStart).slice(0, 30).map((s) => (
           <View key={s.id} style={styles.row} testID="sp-row">
             <Text style={[type.small, { flex: 1 }]}>

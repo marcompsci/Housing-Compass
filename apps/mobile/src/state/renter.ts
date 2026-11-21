@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type PaySplit, rememberAsk, type ReturnItem, type Trial, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type SpendCategory as SC2, type PaySplit, rememberAsk, type ReturnItem, type Trial, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -80,6 +80,15 @@ interface RenterState {
   paySplit: PaySplit | null;
   leaseEnd: string | null;
   askHistory: string[];
+  favSpends: Array<{ amountCents: number; category: SC2; note: string }>;
+  billPayInfo: Record<string, string>;
+  planHidden: { date: string; ids: string[] } | null;
+  addFavSpend(x: { amountCents: number; category: SC2; note: string }): void;
+  removeFavSpend(i: number): void;
+  setBillPayInfo(id: string, text: string): void;
+  hidePlanItem(key: string, date: string): void;
+  removeLastSpend(): void;
+  clearSection(s: "spends" | "side" | "scores" | "wins" | "roommates" | "trials" | "netWorth" | "credit"): void;
   toggleDebtPaid(id: string, month: string): void;
   setPaySplit(s: PaySplit | null): void;
   setLeaseEnd(d: string | null): void;
@@ -171,7 +180,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false, trials: [], returns: [], digestHour: null, debtPaid: {}, paySplit: null, leaseEnd: null, askHistory: [] };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false, trials: [], returns: [], digestHour: null, debtPaid: {}, paySplit: null, leaseEnd: null, askHistory: [], favSpends: [], billPayInfo: {}, planHidden: null };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -219,6 +228,36 @@ export const useRenter = create<RenterState>()(
         set({ debtPaid: { ...get().debtPaid, [id]: cur.includes(month) ? cur.filter((m) => m !== month) : [...cur, month].slice(-60) } });
       },
       setPaySplit: (paySplit) => set({ paySplit }),
+      addFavSpend: (x) => {
+        const cur = get().favSpends.filter((f) => !(f.amountCents === x.amountCents && f.category === x.category && f.note === x.note));
+        set({ favSpends: [x, ...cur].slice(0, 12) });
+      },
+      removeFavSpend: (i) => set({ favSpends: get().favSpends.filter((_, k) => k !== i) }),
+      setBillPayInfo: (id, text) => {
+        const m = { ...get().billPayInfo };
+        if (text.trim()) m[id] = text.trim().slice(0, 120);
+        else delete m[id];
+        set({ billPayInfo: m });
+      },
+      hidePlanItem: (key, date) => {
+        const cur = get().planHidden;
+        const ids = cur && cur.date === date ? cur.ids : [];
+        set({ planHidden: { date, ids: [...ids, key].slice(-200) } });
+      },
+      removeLastSpend: () => set({ spends: get().spends.slice(1) }),
+      clearSection: (s) => {
+        const map = {
+          spends: { spends: [], roundedSpendIds: [], favSpends: [], categoryBudgets: {} },
+          side: { sideIncome: [], mileage: [], sideExpenses: [], sideGoalCents: null },
+          scores: { scores: [] },
+          wins: { negotiations: [] },
+          roommates: { ious: [] },
+          trials: { trials: [], returns: [] },
+          netWorth: { netWorth: [], otherAssetsCents: null },
+          credit: { reportChecks: [], inquiries: [], disputes: [] },
+        } as const;
+        set(map[s] as never);
+      },
       setLeaseEnd: (leaseEnd) => set({ leaseEnd }),
       addAskHistory: (q) => set({ askHistory: rememberAsk(get().askHistory, q) }),
       moveGoalUp: (id) => {
@@ -359,6 +398,9 @@ export const useRenter = create<RenterState>()(
           paySplit: b.data.paySplit ?? null,
           leaseEnd: b.data.leaseEnd ?? null,
           askHistory: b.data.askHistory ?? [],
+          favSpends: b.data.favSpends ?? [],
+          billPayInfo: b.data.billPayInfo ?? {},
+          planHidden: b.data.planHidden ?? null,
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

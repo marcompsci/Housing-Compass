@@ -55,6 +55,13 @@
 ## Done in v0.26
 - #44 more Ask intents (rent, side income, taxes, subscriptions, trials, emergency, bill lookup, overview), debt minimums with due days, paycheck split, lease end, goal order, quick-add spend, combined CSV
 
+## Done in v0.27
+- Pay-first order, next up, plan filters, money settings, clear one section, favorites/undo, where to pay, debt milestones, more Ask topics
+
+## Next ideas (after v0.27)
+48. Counsel review of the pay-first guidance wording
+49. Calendar dots for debt minimums and trials
+
 ## Next ideas (after v0.26)
 46. Voice input for Ask (needs speech recognition permission)
 47. Lease renewal letter template (with counsel review)

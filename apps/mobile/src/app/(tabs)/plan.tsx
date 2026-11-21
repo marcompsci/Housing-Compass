@@ -2,14 +2,14 @@
  * My plan: one list of what's coming up — rent due, tours, application deadlines and
  * follow-ups, the deposit-return deadline and waitlist check-ins — plus the renter tools.
  */
-import { debtPlanItems, leasePlanItems, atRiskObligations, billPlanItems, billPromoItems, growPlanItems, habitPlanItems, trackerPlanItems, paydayChecklist, paydays as paydaysFor, creditPlanItems, billStatuses, buildPlan, cashFlowForecast, moneyPlanItems, paycheckPlan, rentSummary, taxPlanItems, upcomingObligations, yearlyPlanItems, type PlanItem } from "@housing-compass/core";
+import { filterPlan, nextUp, planItemKey, type PlanFilter, debtPlanItems, leasePlanItems, atRiskObligations, billPlanItems, billPromoItems, growPlanItems, habitPlanItems, trackerPlanItems, paydayChecklist, paydays as paydaysFor, creditPlanItems, billStatuses, buildPlan, cashFlowForecast, moneyPlanItems, paycheckPlan, rentSummary, taxPlanItems, upcomingObligations, yearlyPlanItems, type PlanItem } from "@housing-compass/core";
 import { useEffect, useState } from "react";
 import { authenticate, canUseLock } from "../../lib/lock";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usd } from "../../components/forms";
-import { Button, Icon, Section, Tag, type IconName } from "../../components/ui";
+import { Button, Icon, Section, Tag, type IconName, Chip } from "../../components/ui";
 import { now } from "../../config";
 import { useT } from "../../i18n";
 import { PrivacyToggle } from "../../components/PrivacyToggle";
@@ -48,6 +48,7 @@ const KIND_ICON: Record<PlanItem["kind"], IconName> = {
 export default function Plan() {
   const { t } = useT();
   const r = useRenter();
+  const [filter, setFilter] = useState<PlanFilter>("all");
   const threads = useConversations((s) => s.threads);
   const apps = useApplications((s) => s.items);
   const n = now();
@@ -101,6 +102,12 @@ export default function Plan() {
     { icon: "business-outline", label: t("plan.toolLocal"), sub: t("plan.toolLocalSub"), href: "/local-help", testID: "tool-local" },
   ];
 
+  const td = n.toISOString().slice(0, 10);
+  const hiddenIds = r.planHidden && r.planHidden.date === td ? r.planHidden.ids : [];
+  const visible = plan.filter((p) => !hiddenIds.includes(planItemKey(p)));
+  const shown = filterPlan(visible, filter);
+  const top = nextUp(visible);
+  const urgentCount = visible.filter((p) => p.urgent).length;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color.bg }} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.wrap} testID="plan">
@@ -108,9 +115,28 @@ export default function Plan() {
           <Text style={[type.title, { flex: 1 }]} accessibilityRole="header">
             {t("plan.title")}
           </Text>
+          {urgentCount ? <Tag label={t("pf2.urgent", { n: urgentCount })} tone="warn" /> : null}
           <PrivacyToggle />
         </View>
         <Text style={type.small}>{t("plan.intro")}</Text>
+        {top ? (
+          <Pressable onPress={() => router.push(top.href as never)} accessibilityRole="button" style={[styles.item, { borderColor: top.urgent ? color.danger : color.brand, borderWidth: 2 }]} testID="next-up">
+            <View style={[styles.iconBox, top.urgent && { backgroundColor: color.dangerSoft }]}>
+              <Icon name="flash-outline" size={20} tint={top.urgent ? color.danger : color.brand} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={type.tiny}>{t("pf2.nextUp")}</Text>
+              <Text style={type.h3}>{top.title}</Text>
+              <Text style={type.tiny}>{detail(top)}</Text>
+            </View>
+            <Icon name="chevron-forward" tint={color.muted} />
+          </Pressable>
+        ) : null}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }} testID="plan-filters">
+          {(["all", "money", "credit", "home"] as PlanFilter[]).map((f) => (
+            <Chip key={f} label={t(`pf2.f.${f}`)} selected={filter === f} onPress={() => setFilter(f)} />
+          ))}
+        </View>
 
         <Section title={t("plan.next30")}>
           {!r.setupDone && !r.rentSetup && !r.pay ? <Button icon="rocket-outline" label={t("money.setupStart")} onPress={() => router.push("/setup")} testID="plan-setup" /> : null}
@@ -120,7 +146,8 @@ export default function Plan() {
               {!r.rentSetup ? <Button icon="cash-outline" label={t("plan.setUpRent")} onPress={() => router.push("/rent")} testID="plan-setup-rent" /> : null}
             </View>
           ) : null}
-          {plan.map((p, i) => (
+          {hiddenIds.length ? <Text style={type.tiny}>{t("pf2.hidden", { n: hiddenIds.length })}</Text> : null}
+          {shown.map((p, i) => (
             <Pressable key={`${p.kind}:${p.date}:${i}`} onPress={() => router.push(p.href as never)} accessibilityRole="button" style={styles.item} testID="plan-item">
               <View style={[styles.iconBox, p.urgent && { backgroundColor: color.dangerSoft }]}>
                 <Icon name={KIND_ICON[p.kind]} size={20} tint={p.urgent ? color.danger : color.brand} />
@@ -132,7 +159,9 @@ export default function Plan() {
                 </Text>
               </View>
               {p.urgent ? <Tag label={t("plan.soon")} tone="warn" /> : null}
-              <Icon name="chevron-forward" tint={color.muted} />
+              <Pressable onPress={() => r.hidePlanItem(planItemKey(p), td)} accessibilityRole="button" accessibilityLabel={t("pf2.hide")} hitSlop={10} testID="plan-hide">
+                <Icon name="checkmark-done-outline" tint={color.muted} />
+              </Pressable>
             </Pressable>
           ))}
         </Section>

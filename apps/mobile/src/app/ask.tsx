@@ -3,10 +3,10 @@
  * week?", "¿cuándo me pagan?") from the user's own data on this phone. Rules-based — no AI
  * service, nothing is sent anywhere.
  */
-import { allPaidStreak, emergencyFund, estimatedTaxDates, findBillByName, FOLLOW_UPS, sideGoalProgress, sideProfit, trialStatus, canAfford, cardUtilization, goalEta, monthRecap, netWorthNow, parseAsk, payoffPlan, purchaseImpact, scoreTrend, weekAhead, weekSpending, type AskIntent } from "@housing-compass/core";
+import { biggestCosts, coverage, detectCategory, findByName, goalPlan, iouBalances, payPriority, allPaidStreak, emergencyFund, estimatedTaxDates, findBillByName, FOLLOW_UPS, sideGoalProgress, sideProfit, trialStatus, canAfford, cardUtilization, goalEta, monthRecap, netWorthNow, parseAsk, payoffPlan, purchaseImpact, scoreTrend, weekAhead, weekSpending, type AskIntent } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Share, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, today, usd } from "../components/forms";
 import { Banner, Button, Chip } from "../components/ui";
 import { now } from "../config";
@@ -42,6 +42,12 @@ function Ask() {
     if (bill && (parsed.intent === "unknown" || parsed.intent === "due" || parsed.intent === "budget")) {
       const paid = (r.billPaid[bill.id] ?? []).includes(td.slice(0, 7));
       return { q: text, intent: "due", a: t("ask.a.bill", { name: bill.name, amount: usd(bill.amountCents), day: bill.dueDay, status: paid ? t("ask.a.billPaid") : t("ask.a.billUnpaid") }), link: { label: t("plan.toolBills"), href: "/bills" } };
+    }
+    const goal = findByName(text, r.goals);
+    if (goal && (parsed.intent === "save" || parsed.intent === "unknown")) {
+      const gp = goalPlan(goal, now(), r.pay);
+      const eta = goalEta(goal, r.contribs, td);
+      return { q: text, intent: "save", a: t("ask.a.goal", { name: goal.name, saved: usd(goal.savedCents), target: usd(goal.targetCents), pct: Math.round(gp.progress * 100) }) + (eta.eta && eta.weeks ? ` ${t("eta.line", { amount: usd(eta.perWeekCents), date: eta.eta })}` : ""), link: { label: t("money.goals"), href: "/goals" } };
     }
     const intent = parsed.intent;
     const need = { a: t("today.needBalance"), link: { label: t("money.paycheck"), href: "/paycheck" } };
@@ -132,6 +138,32 @@ function Ask() {
         ].filter(Boolean);
         return { a: parts.join(" ") };
       },
+      category: () => {
+        const c = detectCategory(text);
+        const month = td.slice(0, 7);
+        const sum = (cat: string | null) => r.spends.filter((s) => s.date.startsWith(month) && (cat === null || (s.category ?? "other") === cat)).reduce((x, s) => x + s.amountCents, 0);
+        return c ? { a: t("ask.a.category", { cat: t(`spc.${c}`), amount: usd(sum(c)) }), link: { label: t("sp.title"), href: "/spending" } } : { a: t("ask.a.budget", { week: usd(weekSpending(r.spends, r.weeklyLimitCents, td).spentCents), month: usd(sum(null)) }), link: { label: t("sp.title"), href: "/spending" } };
+      },
+      roommates: () => {
+        const b = iouBalances(r.ious);
+        return b.people.length ? { a: b.people.map((p) => (p.cents > 0 ? t("rm.owesYou", { name: p.person, amount: usd(p.cents) }) : t("rm.youOwe", { name: p.person, amount: usd(-p.cents) }))).join(". ") + ".", link: { label: t("rm.title"), href: "/roommates" } } : { a: t("rm.even") };
+      },
+      lease: () => {
+        if (!r.leaseEnd) return { a: t("ask.a.noLease"), link: { label: t("le.title"), href: "/rent" } };
+        const d = Math.round((Date.parse(`${r.leaseEnd}T12:00:00Z`) - Date.parse(`${td}T12:00:00Z`)) / 86_400_000);
+        return { a: d >= 0 ? t("le.days", { n: d, date: r.leaseEnd }) : t("le.past", { date: r.leaseEnd }), link: { label: t("le.title"), href: "/rent" } };
+      },
+      pay_first: () => {
+        const until = m.sts?.until ?? m.nextPay ?? td;
+        const order = payPriority(m.obligations.filter((o) => o.dueDate <= until || o.dueDate <= m.from), r.bills);
+        if (!order.length) return { a: t("ask.a.nothingDue") };
+        const cov = coverage(order, r.startBalanceCents ?? 0);
+        return { a: t("ask.a.payFirst", { list: cov.slice(0, 5).map((o, i) => `${i + 1}. ${o.name} ${usd(o.amountCents)}${o.covered || r.startBalanceCents === null ? "" : ` (${t("pf3.short")})`}`).join("; ") }), link: { label: t("money.title"), href: "/money" } };
+      },
+      biggest: () => {
+        const b = biggestCosts({ rentCents: r.rentSetup?.amountCents ?? null, bills: r.bills, debts: r.debts });
+        return b.rows.length ? { a: t("ask.a.biggest", { list: b.rows.slice(0, 3).map((x) => `${x.name === "Rent" ? t("bills.rent") : x.name} ${usd(x.cents)}`).join(", "), total: usd(b.totalCents) }), link: { label: t("plan.toolBills"), href: "/bills" } } : { a: t("ask.a.noCosts") };
+      },
       unknown: () => ({ a: t("ask.a.unknown") }),
     };
     return { q: text, intent, ...by[intent]() };
@@ -176,9 +208,10 @@ function Ask() {
             <Text style={[type.body, { color: "#fff" }]}>{x.q}</Text>
           </View>
           <View style={[styles.bubble, styles.app]}>
-            <Text style={type.body} testID="ask-answer">
+            <Text style={type.body} testID="ask-answer" selectable>
               {x.a}
             </Text>
+            {Platform.OS !== "web" ? <Button kind="ghost" icon="share-outline" label={t("ask.share")} onPress={() => void Share.share({ message: `${x.q}\n${x.a}` })} /> : null}
             {x.link ? <Button kind="ghost" icon="arrow-forward-outline" label={x.link.label} onPress={() => router.push(x.link!.href as never)} /> : null}
             {i === 0 && x.intent && FOLLOW_UPS[x.intent]?.length ? (
               <View style={formStyles.row} testID="ask-followups">

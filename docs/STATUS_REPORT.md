@@ -1,4 +1,46 @@
-# Status report — v0.26 (2026-11-20): 30 more phases — a smarter assistant and an everyday routine
+# Status report — v0.27 (2026-11-20): 30 more phases — focus on what matters next
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Ask: spending by category | "How much did I spend on coffee?" (en/es/zh keywords). | `detectCategory` |
+| 2 | Ask: roommates | Who owes whom. | `iouBalances` |
+| 3 | Ask: a goal by name | Progress and ETA for a named goal. | `findByName`, `goalEta` |
+| 4 | Ask: lease | Days until the lease ends. | Ask |
+| 5 | Ask: what to pay first | Priority order with what the balance covers. | `payPriority`, `coverage` |
+| 6 | Ask: biggest costs | Top monthly costs and total. | `biggestCosts` |
+| 7 | Ask: share | Share an answer (iOS share sheet); answers are selectable. | Ask |
+| 8 | Pay-first order | Housing → utilities → minimums → other → subscriptions, soonest first. | `payPriority` |
+| 9 | Coverage | How far today's balance goes down that list. | `coverage` |
+| 10 | Pay-first card | On the Today card when money is short. | Money → Today |
+| 11 | Shortfall help | Call early; links to payment-plan/fee letters and found money. | Money → Today |
+| 12 | Next up | The single most urgent item at the top of My plan. | `nextUp` |
+| 13 | Plan filters | All / Money / Credit / Home. | `filterPlan` |
+| 14 | Done for today | Hide a plan item until tomorrow. | `planHidden` |
+| 15 | Urgent count | "N soon" tag in the My plan header. | My plan |
+| 16 | Favorite spends | Save the last spend as a favorite. | `favSpends` |
+| 17 | One-tap logging | Tap a favorite to log it. | Weekly spending |
+| 18 | Undo | Undo the last logged spend. | Weekly spending |
+| 19 | Where to pay | A note per bill (site, app or phone); no passwords or account numbers. | `billPayInfo` |
+| 20 | Pay info on bills | Shown on each bill row. | Bills & budget |
+| 21 | Debt milestones | 25/50/75/100% paid celebrated when a balance is updated. | `debtMilestonesCrossed` |
+| 22 | Money settings | Privacy, morning summary, weekly limit, hourly pay in one place. | `/settings` |
+| 23 | Clear one section | Delete one kind of data (8 choices) with confirmation. | `clearSection` |
+| 24 | Settings link | In the money hub tools. | Money hub |
+| 25 | Report: top category | Monthly report shows the top spending category. | `monthRecap` |
+| 26 | Backup & privacy | New data in backups (strict schema), export and clear. | `RenterBackupSchema` |
+| 27 | Translations | 62 new strings in en/es/zh. | `strings.ts` |
+| 28 | Core tests | 7 new tests. | `test/v027.test.ts` |
+| 29 | Browser checks | 15 new checks; screenshots 90–92. | e2e |
+| 30 | iPhone install | Built and installed on the connected iPhone. |  |
+
+### Tests (all passing)
+- Core: 305 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 233 checks
+
+---
+
+## Previous: v0.26 (2026-11-20): 30 more phases — a smarter assistant and an everyday routine
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

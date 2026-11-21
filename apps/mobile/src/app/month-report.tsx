@@ -1,5 +1,5 @@
 /** Monthly money report from the user's own records: rent, bills, spending, side income, savings. Shareable as text. */
-import { monthReport, previousMonth } from "@housing-compass/core";
+import { monthRecap, monthReport, previousMonth } from "@housing-compass/core";
 import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { formStyles, today, usd } from "../components/forms";
@@ -41,6 +41,7 @@ function MonthReport() {
         {rep.lateFeesCents ? <KV k={t("yir.late")} v={usd(rep.lateFeesCents)} /> : null}
         <KV k={t("mr.bills")} v={t("mr.billsV", { n: rep.billsPaid, total: rep.billsTotal, amount: usd(rep.billsCents) })} />
         <KV k={t("mr.spent")} v={usd(rep.spentCents)} />
+        {monthRecap(r.spends, month).top ? <KV k={t("mr.top")} v={t(`spc.${monthRecap(r.spends, month).top!}`)} /> : null}
         <KV k={t("yir.side")} v={usd(rep.sideCents)} />
         <KV k={t("yir.saved")} v={usd(rep.savedCents)} />
         {rep.debtPaidCents ? <KV k={t("mr.debt")} v={usd(rep.debtPaidCents)} /> : null}

@@ -1,5 +1,5 @@
 /** Card timing for one debt: statement closing day and promo-rate end, with what to pay and when. */
-import { promoPlan, statementTiming, type Debt } from "@housing-compass/core";
+import { debtMilestonesCrossed, promoPlan, statementTiming, type Debt } from "@housing-compass/core";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { now } from "../config";
@@ -23,11 +23,17 @@ export function DebtTiming({ debt }: { debt: Debt }) {
   const paid = useRenter((s) => (s.debtPaid[debt.id] ?? []).includes(today(now()).slice(0, 7)));
   const togglePaid = useRenter((s) => s.toggleDebtPaid);
   const [err, setErr] = useState<string | null>(null);
+  const [cheer, setCheer] = useState<number | null>(null);
   const td = today(now());
   const st = statementTiming(debt, td);
   const pr = promoPlan(debt, td);
   return (
     <View style={{ gap: 4 }}>
+      {cheer ? (
+        <Text style={[type.body, { color: color.verified, fontWeight: "800" }]} testID="debt-cheer">
+          {cheer === 100 ? t("dm.done", { name: debt.name }) : t("dm.hit", { pct: cheer, name: debt.name })}
+        </Text>
+      ) : null}
       {debt.dueDay && debt.balanceCents > 0 ? (
         <Button kind={paid ? "secondary" : "ghost"} icon={paid ? "checkmark-circle" : "ellipse-outline"} label={paid ? t("dd2.paid") : t("dd2.mark", { amount: usd(Math.min(debt.minPaymentCents, debt.balanceCents)), day: debt.dueDay })} onPress={() => togglePaid(debt.id, today(now()).slice(0, 7))} testID="debt-min-paid" />
       ) : null}
@@ -74,6 +80,8 @@ export function DebtTiming({ debt }: { debt: Debt }) {
               if (dueDay.trim() && !(Number.isInteger(dd) && dd >= 1 && dd <= 31)) return setErr(t("card.err"));
               const l = limit.trim() ? toCents(limit) : 0;
               if (!(l >= 0)) return setErr(t("card.err"));
+              const hit = debtMilestonesCrossed(debt, b);
+              setCheer(hit.length ? hit[hit.length - 1]! : null);
               update(debt.id, { dueDay: dueDay.trim() ? dd : undefined, limitCents: l > 0 ? l : undefined, balanceCents: b, startBalanceCents: Math.max(debt.startBalanceCents ?? debt.balanceCents, b), statementDay: day.trim() ? d : undefined, promoEnds: promo.trim() || undefined });
               setErr(null);
               setOpen(false);

@@ -78,6 +78,7 @@ export default function RootLayout() {
         <Stack.Screen name="trials" options={{ title: "Trials & returns" }} />
         <Stack.Screen name="month-report" options={{ title: "Monthly report" }} />
         <Stack.Screen name="badges" options={{ title: "Badges" }} />
+        <Stack.Screen name="settings" options={{ title: "Money settings" }} />
         <Stack.Screen name="split" options={{ title: "Split with roommates" }} />
         <Stack.Screen name="backup" options={{ title: "Backup & restore" }} />
         <Stack.Screen name="setup" options={{ title: "Quick setup" }} />
