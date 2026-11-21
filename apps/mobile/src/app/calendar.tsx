@@ -2,7 +2,7 @@
  * Money calendar: a month view with paydays and every rent and bill due date, so you can see
  * at a glance which week is heavy. Tap a day to see what's due.
  */
-import { monthCalendar, paydays, upcomingObligations, type CalendarCell } from "@housing-compass/core";
+import { applyPartials, debtObligations, trackerObligations, monthCalendar, paydays, upcomingObligations, type CalendarCell } from "@housing-compass/core";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { formStyles, today, usd } from "../components/forms";
@@ -32,7 +32,7 @@ function CalendarScreen() {
   const todayIso = today(now());
   const [month, setMonth] = useState(todayIso.slice(0, 7));
   const [picked, setPicked] = useState<CalendarCell | null>(null);
-  const obligations = upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from: `${month}-01`, days: 41 });
+  const obligations = [...applyPartials([...upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from: `${month}-01`, days: 41 }), ...debtObligations(r.debts, r.debtPaid, `${month}-01`, 41)], r.billPartial), ...trackerObligations(r.trials, r.returns)];
   const pays = r.pay ? paydays(r.pay, `${month}-01`, 41) : [];
   const weeks = monthCalendar(month, pays, obligations);
   const monthTotal = obligations.filter((o) => o.dueDate.startsWith(month)).reduce((s, o) => s + o.amountCents, 0);

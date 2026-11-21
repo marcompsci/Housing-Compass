@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { coverage, payPriority, debtObligations, splitPaycheck, SPEND_CATEGORIES, type SpendCategory, underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { applyPartials, monthCashFlow, rule503020, coverage, payPriority, debtObligations, splitPaycheck, SPEND_CATEGORIES, type SpendCategory, underLimitStreak, savingStreakWeeks, allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -31,7 +31,7 @@ function MoneyScreen() {
   const r = useRenter();
   const n = now();
   const from = today(n);
-  const obligations = [...upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from, days: 45 }), ...debtObligations(r.debts, r.debtPaid, from, 45)].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const obligations = applyPartials([...upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from, days: 45 }), ...debtObligations(r.debts, r.debtPaid, from, 45)], r.billPartial).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const plan = r.pay ? paycheckPlan(r.pay, obligations, from) : null;
   const next = plan?.buckets[0] ?? null;
   const fc = r.startBalanceCents !== null ? cashFlowForecast(r.startBalanceCents, r.pay, obligations, from, 30) : null;
@@ -238,6 +238,42 @@ function MoneyScreen() {
         </View>
         <Text style={type.tiny}>{t("today.note")}</Text>
       </Section>
+
+      {(() => {
+        const month = from.slice(0, 7);
+        const f = monthCashFlow({ month, pay: r.pay, other: r.otherIncome, side: r.sideIncome, rent: r.rentSetup, bills: r.bills, debts: r.debts, spends: r.spends });
+        if (!f.inCents && !f.outCents) return null;
+        const rr = rule503020({ incomeCents: f.inCents, month, rent: r.rentSetup, bills: r.bills, debts: r.debts, spends: r.spends, contribs: r.contribs });
+        return (
+          <Section title={t("cf.title", { month })}>
+            <View testID="cash-flow">
+              <KV k={t("cf.in")} v={usd(f.inCents)} strong />
+              {f.otherCents ? <KV k={`  ${t("oi.title")}`} v={usd(f.otherCents)} /> : null}
+              {f.sideCents ? <KV k={`  ${t("side.title")}`} v={usd(f.sideCents)} /> : null}
+              <KV k={t("cf.out")} v={usd(f.outCents)} strong />
+              <KV k={`  ${t("bills.rent")}`} v={usd(f.rentCents)} />
+              <KV k={`  ${t("cf.bills")}`} v={usd(f.billsCents)} />
+              {f.minimumsCents ? <KV k={`  ${t("cf.mins")}`} v={usd(f.minimumsCents)} /> : null}
+              <KV k={`  ${t("mr.spent")}`} v={usd(f.spentCents)} />
+              <Text style={[type.body, { fontWeight: "800", color: f.leftCents >= 0 ? color.verified : color.danger }]}>{f.leftCents >= 0 ? t("cf.left", { amount: usd(f.leftCents) }) : t("cf.over", { amount: usd(-f.leftCents) })}</Text>
+            </View>
+            {rr ? (
+              <View style={{ gap: 4 }} testID="rule-503020">
+                <Text style={[type.small, { fontWeight: "700" }]}>{t("r5.title")}</Text>
+                {(["needs", "wants", "savings"] as const).map((k) => (
+                  <View key={k} style={{ gap: 2 }}>
+                    <Text style={type.tiny}>{t(`r5.${k}`, { pct: rr[`${k}Pct`], target: rr.targets[k], amount: usd(rr[`${k}Cents`]) })}</Text>
+                    <View style={{ height: 8, borderRadius: 8, backgroundColor: color.neutralSoft, overflow: "hidden" }}>
+                      <View style={{ height: "100%", width: `${Math.min(100, rr[`${k}Pct`])}%`, backgroundColor: k === "savings" ? (rr.savingsPct >= 20 ? color.verified : color.warn) : rr[`${k}Pct`] > rr.targets[k] ? color.warn : color.brand }} />
+                    </View>
+                  </View>
+                ))}
+                <Text style={type.tiny}>{t("r5.note")}</Text>
+              </View>
+            ) : null}
+          </Section>
+        );
+      })()}
 
       <Section title={t("money.snapshot")}>
         <View style={styles.tiles} testID="money-snapshot">

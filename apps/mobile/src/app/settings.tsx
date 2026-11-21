@@ -11,7 +11,7 @@ import { useT } from "../i18n";
 import { useRenter } from "../state/renter";
 import { color, space, type } from "../theme";
 
-const SECTIONS = ["spends", "side", "scores", "wins", "roommates", "trials", "netWorth", "credit"] as const;
+const SECTIONS = ["otherIncome", "spends", "side", "scores", "wins", "roommates", "trials", "netWorth", "credit"] as const;
 
 export default function Settings() {
   const { t } = useT();

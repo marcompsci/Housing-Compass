@@ -494,6 +494,8 @@ export const RenterBackupSchema = z.object({
     paySplit: z.object({ bills: z.number().min(0).max(100), savings: z.number().min(0).max(100), debt: z.number().min(0).max(100), spending: z.number().min(0).max(100) }).nullable().optional(),
     leaseEnd: day.nullable().optional(),
     askHistory: z.array(shortText(200)).max(10).optional(),
+    billPartial: z.record(z.string().max(80), cents).optional(),
+    otherIncome: z.array(z.object({ id: shortText(64), date: day, source: shortText(60), amountCents: cents })).max(2000).optional(),
     favSpends: z.array(z.object({ amountCents: cents, category: z.enum(["food", "coffee", "gas", "fun", "shopping", "other"]), note: shortText(60) })).max(12).optional(),
     billPayInfo: z.record(z.string().max(64), shortText(120)).optional(),
     planHidden: z.object({ date: day, ids: z.array(z.string().max(300)).max(200) }).nullable().optional(),

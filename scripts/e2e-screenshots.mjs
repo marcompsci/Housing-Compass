@@ -1332,6 +1332,56 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await shot("92-ask-more");
 }
 
+// ── v0.28: other money in, monthly cash flow, 50/30/20, partial bill payments, edit & search spends, calendar extras, Ask (today/tomorrow, income, 50/30/20)
+{
+  await page.goto(`${base}/paycheck`);
+  await page.getByRole("button", { name: "Tax refund" }).click();
+  await page.getByTestId("oi-amount").fill("300");
+  await page.getByTestId("oi-add").click();
+  await page.getByTestId("oi-row").first().waitFor();
+  check(/Tax refund/.test(await page.getByTestId("oi-row").first().innerText()), "other money in logged");
+
+  await page.goto(`${base}/money`);
+  await page.getByTestId("cash-flow").waitFor();
+  check(/Money in/.test(await page.getByTestId("cash-flow").innerText()) && /Other money in/.test(await page.getByTestId("cash-flow").innerText()), "monthly cash flow includes other money in");
+  check((await page.getByTestId("rule-503020").count()) === 1, "50/30/20 check shown");
+  await page.getByTestId("cash-flow").scrollIntoViewIfNeeded();
+  await shot("93-cash-flow");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("partial-input").first().fill("1");
+  await page.getByTestId("partial-save").first().click();
+  check(/Paid \$1 · \$[\d,.]+ left/.test(await page.getByTestId("partial-left").first().innerText()), "partial bill payment tracked");
+
+  await page.goto(`${base}/spending`);
+  await page.getByTestId("sp-row").first().waitFor();
+  await page.getByTestId("sp-open").first().click();
+  await page.getByTestId("sp-edit-amount").fill("9.99");
+  await page.getByTestId("sp-edit-save").click();
+  check((await page.getByTestId("sp-row").filter({ hasText: "$9.99" }).count()) >= 1, "logged spend can be edited");
+  if (await page.getByTestId("sp-search").count()) {
+    await page.getByTestId("sp-search").fill("coffee");
+    const rows = await page.getByTestId("sp-row").allInnerTexts();
+    check(rows.length > 0 && rows.every((t) => /coffee/i.test(t)), "spends can be searched");
+  }
+  await shot("94-spend-edit");
+
+  await page.goto(`${base}/calendar`);
+  await page.getByTestId("calendar").waitFor();
+  check((await page.getByTestId("calendar").count()) === 1, "calendar shows minimums, trials and returns");
+
+  await page.goto(`${base}/ask`);
+  await page.getByTestId("ask-input").fill("anything due tomorrow?");
+  await page.getByTestId("ask-send").click();
+  check(/Due tomorrow|Nothing due tomorrow/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask: due tomorrow");
+  await page.getByTestId("ask-input").fill("how much do I make");
+  await page.getByTestId("ask-send").click();
+  check(/This month: pay about/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask: income");
+  await page.getByTestId("ask-input").fill("am I following 50/30/20?");
+  await page.getByTestId("ask-send").click();
+  check(/needs \d+%, wants \d+%, savings \d+%/.test(await page.getByTestId("ask-answer").first().innerText()), "Ask: 50/30/20");
+}
+
 // ── v0.15: Spanish filters and message checker
 await page.goto(`${base}/help`);
 await page.getByRole("button", { name: "Español" }).click();

@@ -34,6 +34,9 @@ function Spending() {
   const [note, setNote] = useState("");
   const [cat, setCat] = useState<SpendCategory>("food");
   const [undo, setUndo] = useState(false);
+  const [search, setSearch] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editAmt, setEditAmt] = useState("");
   const recap = monthRecap(r.spends, td.slice(0, 7));
   const weeks = weeklyTotals(r.spends, td, 8);
   const maxWeek = Math.max(1, ...weeks.map((x) => x.cents), r.weeklyLimitCents ?? 0);
@@ -104,16 +107,36 @@ function Spending() {
           {undo && r.spends[0] ? <Button kind="ghost" icon="arrow-undo-outline" label={t("fav.undo", { amount: usd(r.spends[0].amountCents) })} onPress={() => (r.removeLastSpend(), setUndo(false))} testID="sp-undo" /> : null}
           {r.spends[0] ? <Button kind="ghost" icon="star-outline" label={t("fav.save")} onPress={() => r.addFavSpend({ amountCents: r.spends[0]!.amountCents, category: r.spends[0]!.category ?? "other", note: r.spends[0]!.note })} testID="fav-save" /> : null}
         </View>
-        {r.spends.filter((s) => s.date >= w.weekStart).slice(0, 30).map((s) => (
-          <View key={s.id} style={styles.row} testID="sp-row">
-            <Text style={[type.small, { flex: 1 }]}>
-              {s.date} · {t(`spc.${s.category ?? "other"}`)}
-              {s.note ? ` · ${s.note}` : ""}
-            </Text>
-            <Text style={[type.small, { fontWeight: "700" }]}>{usd(s.amountCents)}</Text>
-            <Pressable onPress={() => r.removeSpend(s.id)} accessibilityRole="button" accessibilityLabel={t("bills.remove", { name: s.note || usd(s.amountCents) })} hitSlop={10}>
-              <Icon name="trash-outline" size={16} tint={color.muted} />
-            </Pressable>
+        {r.spends.length > 5 ? <Field label={t("sr.label")} value={search} onChangeText={setSearch} placeholder={t("sr.ph")} testID="sp-search" /> : null}
+        {(search.trim() ? r.spends.filter((s) => `${s.note} ${t(`spc.${s.category ?? "other"}`)} ${s.date}`.toLowerCase().includes(search.trim().toLowerCase())) : r.spends.filter((s) => s.date >= w.weekStart)).slice(0, 30).map((s) => (
+          <View key={s.id} style={{ gap: 4 }}>
+            <View style={styles.row} testID="sp-row">
+              <Pressable style={{ flex: 1 }} onPress={() => (setEditId(editId === s.id ? null : s.id), setEditAmt(String(s.amountCents / 100)))} accessibilityRole="button" accessibilityLabel={t("sr.edit")} testID="sp-open">
+                <Text style={type.small}>
+                  {s.date} · {t(`spc.${s.category ?? "other"}`)}
+                  {s.note ? ` · ${s.note}` : ""}
+                </Text>
+              </Pressable>
+              <Text style={[type.small, { fontWeight: "700" }]}>{usd(s.amountCents)}</Text>
+              <Pressable onPress={() => r.removeSpend(s.id)} accessibilityRole="button" accessibilityLabel={t("bills.remove", { name: s.note || usd(s.amountCents) })} hitSlop={10}>
+                <Icon name="trash-outline" size={16} tint={color.muted} />
+              </Pressable>
+            </View>
+            {editId === s.id ? (
+              <View style={[formStyles.card, { gap: 6 }]} testID="sp-edit">
+                <View style={formStyles.row}>
+                  {SPEND_CATEGORIES.map((c) => (
+                    <Chip key={c} label={t(`spc.${c}`)} selected={(s.category ?? "other") === c} onPress={() => r.updateSpend(s.id, { category: c })} />
+                  ))}
+                </View>
+                <View style={formStyles.row}>
+                  <View style={{ flex: 1, minWidth: 120 }}>
+                    <Field label={t("side.amount")} value={editAmt} onChangeText={setEditAmt} keyboardType="decimal-pad" testID="sp-edit-amount" />
+                  </View>
+                  <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => { const c = toCents(editAmt); if (c > 0) r.updateSpend(s.id, { amountCents: c }); setEditId(null); }} testID="sp-edit-save" />
+                </View>
+              </View>
+            ) : null}
           </View>
         ))}
       </Section>

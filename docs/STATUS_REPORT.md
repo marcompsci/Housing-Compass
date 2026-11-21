@@ -1,3 +1,37 @@
+# Status report — v0.28 (2026-11-21): 25 more phases — where the month's money goes
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Partial bill payments | Record part of a bill paid this month; only the rest stays due. | `billPartial`, Bills & budget |
+| 2 | Remaining due in safe-to-spend | Plan, Today and safe-to-spend use what's left on a bill. | `applyPartials` |
+| 3 | Edit a spend | Tap a logged spend to change amount or category. | `updateSpend` |
+| 4 | Other money in | Log tax refunds, gifts, bonuses, things sold. | `otherIncome`, Paycheck |
+| 5 | Other money in counted | Shown in the monthly report and cash flow. | Monthly report |
+| 6 | Monthly cash flow | Money in vs out for this month, with what's left. | `monthCashFlow`, Money hub |
+| 7 | 50/30/20 check | Needs / wants / savings share of income, labeled as a guide. | `rule503020` |
+| 8 | Calendar: debt minimums | Minimum payments appear on their due day. | Calendar |
+| 9 | Calendar: trials and returns | Trial end and return-by dates appear on the calendar. | `trackerObligations` |
+| 10 | Trial-ending reminder | Local notification the day before at 10am. | `trackerReminders` |
+| 11 | Return-deadline reminder | Local notification 2 days before. | `trackerReminders` |
+| 12 | Lease-end reminders | Local notifications at 60 and 30 days. | `trackerReminders` |
+| 13 | Ask: due today | What's due today. | Ask |
+| 14 | Ask: due tomorrow | What's due tomorrow. | Ask |
+| 15 | Ask: income | Pay, side and other money this month. | Ask |
+| 16 | Ask: saved this month | Goal contributions this month. | Ask |
+| 17 | Ask: what changed | Spending this month vs last. | Ask |
+| 18 | Ask: 50/30/20 | Needs/wants/savings split. | Ask |
+| 19 | Rotating examples | Ask examples change daily; every example is checked to parse to its own topic. | `askExamples` |
+| 20 | Spending search | Search spends by note, category or date. | Weekly spending |
+| 21 | Clear other money in | New choice in Money settings → clear one section. | `clearSection` |
+| 22 | Backup & export | New data in backups (strict schema), My data export and restore. | `RenterBackupSchema` |
+| 23 | Translations | All new text in English, Spanish and Chinese. | `strings.ts` |
+| 24 | Tests | 8 new core tests (313 total) and 10 new end-to-end checks. | `v028.test.ts`, e2e |
+| 25 | Docs & install | Version bump, docs, iPhone install. | docs |
+
+Still needs Omari: merge the PR, Supabase keys, data authorizations, `eas init`, counsel and native-speaker reviews (now including the 50/30/20 wording), App Store URLs and screenshots. The 76 research leads expired on Nov 15 and must be re-checked before any use.
+
+---
+
 # Status report — v0.27 (2026-11-20): 30 more phases — focus on what matters next
 
 | # | Phase | What it does | Where |

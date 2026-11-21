@@ -43,6 +43,7 @@ function MonthReport() {
         <KV k={t("mr.spent")} v={usd(rep.spentCents)} />
         {monthRecap(r.spends, month).top ? <KV k={t("mr.top")} v={t(`spc.${monthRecap(r.spends, month).top!}`)} /> : null}
         <KV k={t("yir.side")} v={usd(rep.sideCents)} />
+        {r.otherIncome.some((x) => x.date.startsWith(month)) ? <KV k={t("oi.title")} v={usd(r.otherIncome.filter((x) => x.date.startsWith(month)).reduce((s, x) => s + x.amountCents, 0))} /> : null}
         <KV k={t("yir.saved")} v={usd(rep.savedCents)} />
         {rep.debtPaidCents ? <KV k={t("mr.debt")} v={usd(rep.debtPaidCents)} /> : null}
       </View>

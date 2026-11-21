@@ -59,6 +59,8 @@ export function makeBackup(now: Date): RenterBackup {
       favSpends: r.favSpends,
       billPayInfo: r.billPayInfo,
       planHidden: r.planHidden,
+      billPartial: r.billPartial,
+      otherIncome: r.otherIncome,
     },
   };
 }

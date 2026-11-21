@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, BILL_SCRIPTS, autopayChecklist, billPriceTrend, yearlyBillCost, billStatuses, dueDateSuggestions, hoursToCover, noteKey, paidThisMonth, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, BILL_SCRIPTS, partialKey, autopayChecklist, billPriceTrend, yearlyBillCost, billStatuses, dueDateSuggestions, hoursToCover, noteKey, paidThisMonth, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -16,6 +16,35 @@ import { useRenter } from "../state/renter";
 import { color, space, type } from "../theme";
 
 const pct = (x: number | null) => (x === null ? "—" : `${Math.round(x * 100)}%`);
+
+function PartialRow({ id, month, name, amountCents, paid }: { id: string; month: string; name: string; amountCents: number; paid: number }) {
+  const { t } = useT();
+  const setPartial = useRenter((s) => s.setBillPartial);
+  const markPaid = useRenter((s) => s.markBillPaid);
+  const [v, setV] = useState(paid ? String(paid / 100) : "");
+  return (
+    <View style={{ gap: 2 }} testID="partial-row">
+      <View style={formStyles.row}>
+        <View style={{ flex: 1, minWidth: 160 }}>
+          <Field label={t("pp2.field", { name, amount: usd(amountCents) })} value={v} onChangeText={setV} keyboardType="decimal-pad" testID="partial-input" />
+        </View>
+        <Button
+          kind="secondary"
+          label={t("rent.saveSetup")}
+          testID="partial-save"
+          onPress={() => {
+            const c = toCents(v);
+            if (c >= amountCents) {
+              setPartial(partialKey(id, month), null);
+              markPaid(id, month);
+            } else setPartial(partialKey(id, month), c > 0 ? c : null);
+          }}
+        />
+      </View>
+      {paid ? <Text style={type.tiny} testID="partial-left">{t("pp2.left", { paid: usd(paid), left: usd(amountCents - paid) })}</Text> : null}
+    </View>
+  );
+}
 
 function PayInfoRow({ id, name, value }: { id: string; name: string; value: string }) {
   const { t } = useT();
@@ -263,6 +292,20 @@ export default function Bills() {
             </View>
           ) : null}
         </Section>
+
+        {(() => {
+          const month = today(now()).slice(0, 7);
+          const unpaid = r.bills.filter((b) => !(r.billPaid[b.id] ?? []).includes(month));
+          if (!unpaid.length) return null;
+          return (
+            <Section title={t("pp2.title")}>
+              <Text style={type.small}>{t("pp2.body")}</Text>
+              {unpaid.slice(0, 10).map((b) => (
+                <PartialRow key={b.id} id={b.id} month={month} name={b.name} amountCents={b.amountCents} paid={r.billPartial[partialKey(b.id, month)] ?? 0} />
+              ))}
+            </Section>
+          );
+        })()}
 
         {(() => {
           const month = today(now()).slice(0, 7);

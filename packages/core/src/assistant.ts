@@ -19,8 +19,14 @@ const daysBetween = (a: string, b: string) => Math.round((noon(b).getTime() - no
 const usd = (c: number) => `${c < 0 ? "-" : ""}$${(Math.abs(c) / 100).toLocaleString("en-US", { minimumFractionDigits: Math.abs(c) % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 // ───────── Ask: intent parsing ─────────
-export type AskIntent = "afford" | "due" | "safe" | "payday" | "debt" | "budget" | "net_worth" | "credit" | "save" | "rent" | "side" | "tax" | "subs" | "trials" | "emergency" | "overview" | "category" | "roommates" | "lease" | "pay_first" | "biggest" | "unknown";
+export type AskIntent = "afford" | "due" | "safe" | "payday" | "debt" | "budget" | "net_worth" | "credit" | "save" | "rent" | "side" | "tax" | "subs" | "trials" | "emergency" | "overview" | "category" | "roommates" | "lease" | "pay_first" | "biggest" | "due_today" | "due_tomorrow" | "income" | "saved_month" | "changed" | "rule_503020" | "unknown";
 const RULES: Array<[AskIntent, RegExp]> = [
+  ["rule_503020", /50\/30\/20|50-30-20|needs and wants|necesidades y gustos|需要和想要/],
+  ["due_tomorrow", /due tomorrow|tomorrow|mañana|明天/],
+  ["due_today", /due today|today'?s bills|vence hoy|hoy vence|今天到期|今天要付/],
+  ["changed", /what changed|compared to last month|vs last month|than last month|cambió|mes pasado|上个月|变化/],
+  ["saved_month", /saved this month|save this month|ahorré este mes|本月存了|这个月存了/],
+  ["income", /how much do i (make|earn)|my income|my pay\b|cuánto gano|mis ingresos|我赚多少|我的收入/],
   ["roommates", /owes? me|who owes|roommate|me debe|me deben|compañer|室友|欠我/],
   ["pay_first", /pay first|prioriti[sz]e|what should i pay|which bill first|qué (pago|debo pagar) primero|先付|先还|优先/],
   ["biggest", /biggest|largest|most expensive|más (grande|cara|caro)|最大|最贵/],

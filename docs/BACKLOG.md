@@ -58,6 +58,13 @@
 ## Done in v0.27
 - Pay-first order, next up, plan filters, money settings, clear one section, favorites/undo, where to pay, debt milestones, more Ask topics
 
+## Done in v0.28
+- Partial bill payments, edit/search spends, other money in, monthly cash flow, 50/30/20 check, calendar minimums/trials/returns, tracker and lease reminders, more Ask topics, rotating examples
+
+## Next ideas (after v0.28)
+50. Native-speaker and counsel review of the 50/30/20 wording
+51. Partial payments for debts (beyond the minimum)
+
 ## Next ideas (after v0.27)
 48. Counsel review of the pay-first guidance wording
 49. Calendar dots for debt minimums and trials

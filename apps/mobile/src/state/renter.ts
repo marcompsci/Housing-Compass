@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type SpendCategory as SC2, type PaySplit, rememberAsk, type ReturnItem, type Trial, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type OtherIncome, type Spend as SpendT, type SpendCategory as SC2, type PaySplit, rememberAsk, type ReturnItem, type Trial, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -83,12 +83,18 @@ interface RenterState {
   favSpends: Array<{ amountCents: number; category: SC2; note: string }>;
   billPayInfo: Record<string, string>;
   planHidden: { date: string; ids: string[] } | null;
+  billPartial: Record<string, number>;
+  otherIncome: OtherIncome[];
+  setBillPartial(key: string, cents: number | null): void;
+  addOtherIncome(x: Omit<OtherIncome, "id">): void;
+  removeOtherIncome(id: string): void;
+  updateSpend(id: string, p: Partial<Omit<SpendT, "id">>): void;
   addFavSpend(x: { amountCents: number; category: SC2; note: string }): void;
   removeFavSpend(i: number): void;
   setBillPayInfo(id: string, text: string): void;
   hidePlanItem(key: string, date: string): void;
   removeLastSpend(): void;
-  clearSection(s: "spends" | "side" | "scores" | "wins" | "roommates" | "trials" | "netWorth" | "credit"): void;
+  clearSection(s: "otherIncome" | "spends" | "side" | "scores" | "wins" | "roommates" | "trials" | "netWorth" | "credit"): void;
   toggleDebtPaid(id: string, month: string): void;
   setPaySplit(s: PaySplit | null): void;
   setLeaseEnd(d: string | null): void;
@@ -180,7 +186,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false, trials: [], returns: [], digestHour: null, debtPaid: {}, paySplit: null, leaseEnd: null, askHistory: [], favSpends: [], billPayInfo: {}, planHidden: null };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false, trials: [], returns: [], digestHour: null, debtPaid: {}, paySplit: null, leaseEnd: null, askHistory: [], favSpends: [], billPayInfo: {}, planHidden: null, billPartial: {}, otherIncome: [] };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -244,10 +250,20 @@ export const useRenter = create<RenterState>()(
         const ids = cur && cur.date === date ? cur.ids : [];
         set({ planHidden: { date, ids: [...ids, key].slice(-200) } });
       },
+      setBillPartial: (key, cents) => {
+        const m = { ...get().billPartial };
+        if (cents && cents > 0) m[key] = cents;
+        else delete m[key];
+        set({ billPartial: m });
+      },
+      addOtherIncome: (x) => set({ otherIncome: [{ ...x, id: uuid() }, ...get().otherIncome].slice(0, 2000) }),
+      removeOtherIncome: (id) => set({ otherIncome: get().otherIncome.filter((x) => x.id !== id) }),
+      updateSpend: (id, p) => set({ spends: get().spends.map((s) => (s.id === id ? { ...s, ...p } : s)) }),
       removeLastSpend: () => set({ spends: get().spends.slice(1) }),
       clearSection: (s) => {
         const map = {
           spends: { spends: [], roundedSpendIds: [], favSpends: [], categoryBudgets: {} },
+          otherIncome: { otherIncome: [] },
           side: { sideIncome: [], mileage: [], sideExpenses: [], sideGoalCents: null },
           scores: { scores: [] },
           wins: { negotiations: [] },
@@ -401,6 +417,8 @@ export const useRenter = create<RenterState>()(
           favSpends: b.data.favSpends ?? [],
           billPayInfo: b.data.billPayInfo ?? {},
           planHidden: b.data.planHidden ?? null,
+          billPartial: b.data.billPartial ?? {},
+          otherIncome: b.data.otherIncome ?? [],
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

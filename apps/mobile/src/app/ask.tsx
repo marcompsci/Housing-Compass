@@ -3,7 +3,7 @@
  * week?", "¿cuándo me pagan?") from the user's own data on this phone. Rules-based — no AI
  * service, nothing is sent anywhere.
  */
-import { biggestCosts, coverage, detectCategory, findByName, goalPlan, iouBalances, payPriority, allPaidStreak, emergencyFund, estimatedTaxDates, findBillByName, FOLLOW_UPS, sideGoalProgress, sideProfit, trialStatus, canAfford, cardUtilization, goalEta, monthRecap, netWorthNow, parseAsk, payoffPlan, purchaseImpact, scoreTrend, weekAhead, weekSpending, type AskIntent } from "@housing-compass/core";
+import { askExamples, monthCashFlow, monthRecap as monthRecap2, rule503020, biggestCosts, coverage, detectCategory, findByName, goalPlan, iouBalances, payPriority, allPaidStreak, emergencyFund, estimatedTaxDates, findBillByName, FOLLOW_UPS, sideGoalProgress, sideProfit, trialStatus, canAfford, cardUtilization, goalEta, monthRecap, netWorthNow, parseAsk, payoffPlan, purchaseImpact, scoreTrend, weekAhead, weekSpending, type AskIntent } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Platform, Share, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -33,7 +33,7 @@ function Ask() {
   const [q, setQ] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const td = today(now());
-  const examples = [t("ask.ex.due"), t("ask.ex.afford"), t("ask.ex.safe"), t("ask.ex.debt"), t("ask.ex.payday"), t("ask.ex.credit")];
+  const examples = [t("ask.ex.due"), ...askExamples(td, 7).filter((i) => i !== "due").slice(0, 5).map((i) => t(`ask.q.${i as "safe"}`))];
 
   const answer = (text: string): Turn => {
     const parsed = parseAsk(text);
@@ -163,6 +163,33 @@ function Ask() {
       biggest: () => {
         const b = biggestCosts({ rentCents: r.rentSetup?.amountCents ?? null, bills: r.bills, debts: r.debts });
         return b.rows.length ? { a: t("ask.a.biggest", { list: b.rows.slice(0, 3).map((x) => `${x.name === "Rent" ? t("bills.rent") : x.name} ${usd(x.cents)}`).join(", "), total: usd(b.totalCents) }), link: { label: t("plan.toolBills"), href: "/bills" } } : { a: t("ask.a.noCosts") };
+      },
+      due_today: () => {
+        const items = m.obligations.filter((o) => o.dueDate === m.from);
+        return items.length ? { a: t("ask.a.dueDay", { when: t("today.today"), list: items.map((o) => `${o.name} ${usd(o.amountCents)}`).join(", ") }), link: { label: t("plan.toolBills"), href: "/bills" } } : { a: t("ask.a.nothingDay", { when: t("today.today") }) };
+      },
+      due_tomorrow: () => {
+        const tm = new Date(Date.parse(`${m.from}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+        const items = m.obligations.filter((o) => o.dueDate === tm);
+        return items.length ? { a: t("ask.a.dueDay", { when: t("ask.tomorrow"), list: items.map((o) => `${o.name} ${usd(o.amountCents)}`).join(", ") }), link: { label: t("plan.toolBills"), href: "/bills" } } : { a: t("ask.a.nothingDay", { when: t("ask.tomorrow") }) };
+      },
+      income: () => {
+        const f = monthCashFlow({ month: td.slice(0, 7), pay: r.pay, other: r.otherIncome, side: r.sideIncome, rent: r.rentSetup, bills: r.bills, debts: r.debts, spends: r.spends });
+        return r.pay || f.inCents ? { a: t("ask.a.income", { pay: usd(f.payCents), side: usd(f.sideCents), other: usd(f.otherCents), total: usd(f.inCents) }), link: { label: t("money.paycheck"), href: "/paycheck" } } : { a: t("ask.a.noPay"), link: { label: t("money.paycheck"), href: "/paycheck" } };
+      },
+      saved_month: () => {
+        const saved = r.contribs.filter((c) => c.date.startsWith(td.slice(0, 7))).reduce((s, c) => s + c.amountCents, 0);
+        return { a: t("ask.a.savedMonth", { amount: usd(saved) }), link: { label: t("money.goals"), href: "/goals" } };
+      },
+      changed: () => {
+        const rc = monthRecap2(r.spends, td.slice(0, 7));
+        return { a: rc.lastTotalCents || rc.totalCents ? t("ask.a.changed", { now: usd(rc.totalCents), last: usd(rc.lastTotalCents), diff: `${rc.changeCents >= 0 ? "+" : "-"}${usd(Math.abs(rc.changeCents))}` }) : t("ask.a.noSpends"), link: { label: t("sp.title"), href: "/spending" } };
+      },
+      rule_503020: () => {
+        const month = td.slice(0, 7);
+        const f = monthCashFlow({ month, pay: r.pay, other: r.otherIncome, side: r.sideIncome, rent: r.rentSetup, bills: r.bills, debts: r.debts, spends: r.spends });
+        const rr = rule503020({ incomeCents: f.inCents, month, rent: r.rentSetup, bills: r.bills, debts: r.debts, spends: r.spends, contribs: r.contribs });
+        return rr ? { a: t("ask.a.r5", { needs: rr.needsPct, wants: rr.wantsPct, savings: rr.savingsPct }), link: { label: t("money.title"), href: "/money" } } : { a: t("ask.a.noPay"), link: { label: t("money.paycheck"), href: "/paycheck" } };
       },
       unknown: () => ({ a: t("ask.a.unknown") }),
     };

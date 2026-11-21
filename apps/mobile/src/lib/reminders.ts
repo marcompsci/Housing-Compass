@@ -4,7 +4,7 @@
  * when the user turns reminders on. On the web there are no scheduled notifications; the
  * "My plan" tab shows the same items instead.
  */
-import { billReminders, dailyDigest, debtObligations, reportReminder, billStatuses, nextWeeklyCheckIn, paycheckPlan, reminderSchedule, upcomingObligations, type ReminderPlan } from "@housing-compass/core";
+import { trackerReminders, billReminders, dailyDigest, debtObligations, reportReminder, billStatuses, nextWeeklyCheckIn, paycheckPlan, reminderSchedule, upcomingObligations, type ReminderPlan } from "@housing-compass/core";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -62,7 +62,7 @@ export function currentReminderPlans(): ReminderPlan[] {
     }
   }
   const weekly: ReminderPlan[] = r.weeklyCheckIn ? [{ id: "weekly-check-in", at: nextWeeklyCheckIn(n, offset), title: "Weekly money check-in", body: "Two minutes: mark what you paid, check what's due this week, and see your money check." }] : [];
-  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset), ...payday, ...weekly, ...reportReminder(r.reportChecks, n, offset), ...(r.digestHour ? dailyDigest([...upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from: n.toISOString().slice(0, 10), days: 10 }), ...debtObligations(r.debts, r.debtPaid, n.toISOString().slice(0, 10), 10)], n, offset, r.digestHour) : [])].sort((a, b) => a.at.localeCompare(b.at));
+  return [...base, ...billReminders(billStatuses(r.bills, r.billPaid, n), n, offset), ...payday, ...weekly, ...reportReminder(r.reportChecks, n, offset), ...trackerReminders({ trials: r.trials, returns: r.returns, leaseEnd: r.leaseEnd, now: n, utcOffsetMinutes: offset }), ...(r.digestHour ? dailyDigest([...upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from: n.toISOString().slice(0, 10), days: 10 }), ...debtObligations(r.debts, r.debtPaid, n.toISOString().slice(0, 10), 10)], n, offset, r.digestHour) : [])].sort((a, b) => a.at.localeCompare(b.at));
 }
 
 /** Keeps the scheduled reminders in step with rent, payments and tours. Mounted once in the root layout. */
@@ -77,6 +77,9 @@ export function useReminderSync() {
   const weekly = useRenter((s) => s.weeklyCheckIn);
   const reportChecks = useRenter((s) => s.reportChecks);
   const digestHour = useRenter((s) => s.digestHour);
+  const trials = useRenter((s) => s.trials);
+  const returns = useRenter((s) => s.returns);
+  const leaseEnd = useRenter((s) => s.leaseEnd);
   useEffect(() => {
     if (!remindersSupported) return;
     const id = setTimeout(() => {
@@ -85,5 +88,5 @@ export function useReminderSync() {
       );
     }, 500);
     return () => clearTimeout(id);
-  }, [on, setup, payments, threads, bills, billPaid, pay, weekly, reportChecks, digestHour]);
+  }, [on, setup, payments, threads, bills, billPaid, pay, weekly, reportChecks, digestHour, trials, returns, leaseEnd]);
 }
