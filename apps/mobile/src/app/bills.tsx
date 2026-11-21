@@ -2,7 +2,7 @@
  * Bills & budget: the rest of the monthly bills next to rent, checked off as they're paid,
  * with a simple take-home budget and a calendar file of every due date. Device-only.
  */
-import { BILL_CATEGORIES, BILL_SCRIPTS, autopayChecklist, billStatuses, dueDateSuggestions, hoursToCover, noteKey, paidThisMonth, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
+import { BILL_CATEGORIES, BILL_SCRIPTS, autopayChecklist, billPriceTrend, yearlyBillCost, billStatuses, dueDateSuggestions, hoursToCover, noteKey, paidThisMonth, subscriptionSavings, budgetSnapshot, buildIcs, dueDateEvents, validateBill, type BillCategory } from "@housing-compass/core";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -155,6 +155,7 @@ export default function Bills() {
                   <Text style={type.tiny}>
                     {t(`bills.c.${s.bill.category}`)} · {t("bills.dueOn", { date: s.nextDue })}
                     {s.bill.autopay ? ` · ${t("bills.autopayShort")}` : ""}
+                    {billPriceTrend(r.billHistory, s.bill) ? ` · ${t("bh.trend", { from: usd(billPriceTrend(r.billHistory, s.bill)!.firstCents), pct: billPriceTrend(r.billHistory, s.bill)!.pct })}` : ""}
                     {s.bill.promoEnds ? ` · ${t("bp.ends", { date: s.bill.promoEnds })}` : ""}
                     {r.hourlyCents ? ` · ${t("hrs.short", { n: hoursToCover(s.bill.amountCents, r.hourlyCents) ?? 0 })}` : ""}
                   </Text>
@@ -261,6 +262,16 @@ export default function Bills() {
             </Section>
           );
         })()}
+
+        {r.bills.length ? (
+          <Section title={t("yc.title", { amount: usd(yearlyBillCost(r.bills).totalCents) })}>
+            <View testID="yearly-cost">
+              {yearlyBillCost(r.bills).rows.slice(0, 8).map((x) => (
+                <KV key={x.id} k={x.name} v={t("yc.line", { amount: usd(x.yearlyCents) })} />
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
         {(() => {
           const a = autopayChecklist(r.bills);

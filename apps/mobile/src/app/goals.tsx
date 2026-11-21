@@ -2,7 +2,7 @@
  * Savings goals: a move-in fund, an emergency fund, a deposit — with how much to put away each
  * month and from each paycheck to get there by the target date. Device-only.
  */
-import { crossedMilestones, goalPlan, savingStreakWeeks } from "@housing-compass/core";
+import { crossedMilestones, goalEta, goalPlan, savingStreakWeeks } from "@housing-compass/core";
 import { today } from "../components/forms";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -29,6 +29,7 @@ function GoalCard({ id }: { id: string }) {
   const g = useRenter((s) => s.goals.find((x) => x.id === id))!;
   const pay = useRenter((s) => s.pay);
   const contribute = useRenter((s) => s.contribute);
+  const contribs = useRenter((s) => s.contribs);
   const remove = useRenter((s) => s.removeGoal);
   const [add, setAdd] = useState("");
   const [cheer, setCheer] = useState<number | null>(null);
@@ -47,6 +48,11 @@ function GoalCard({ id }: { id: string }) {
       <KV k={t("goal.saved")} v={`${usd(g.savedCents)} / ${usd(g.targetCents)}`} strong />
       {p.perMonthCents !== null ? <KV k={t("goal.perMonth")} v={usd(p.perMonthCents)} /> : null}
       {p.perPaycheckCents !== null ? <KV k={t("goal.perCheck")} v={usd(p.perPaycheckCents)} /> : null}
+      {(() => {
+        const e = goalEta(g, contribs, today(now()));
+        if (!e.perWeekCents || !e.eta || e.weeks === 0) return null;
+        return <Text style={type.tiny} testID="goal-eta">{t("eta.line", { amount: usd(e.perWeekCents), date: e.eta })}</Text>;
+      })()}
       {g.targetDate ? <Text style={type.tiny}>{p.overdue ? t("goal.overdue", { date: g.targetDate }) : t("goal.by", { date: g.targetDate })}</Text> : null}
       {cheer ? (
         <Text style={[type.body, { color: color.verified, fontWeight: "800" }]} testID="goal-cheer">

@@ -24,6 +24,7 @@ export default function Backup() {
 
 function BackupScreen() {
   const { t } = useT();
+  const lastBackup = useRenter((s) => s.lastBackupAt);
   const restore = useRenter((s) => s.restore);
   const [text, setText] = useState("");
   const [pending, setPending] = useState<RenterBackup | null>(null);
@@ -35,7 +36,8 @@ function BackupScreen() {
       </Banner>
       <Section title={t("bk.saveTitle")}>
         <Text style={type.small}>{t("bk.saveBody")}</Text>
-        <Button icon="download-outline" label={t("bk.save")} onPress={() => void shareBackup(now())} testID="backup-save" />
+        <Button icon="download-outline" label={t("bk.save")} onPress={() => void shareBackup(now()).then(() => useRenter.getState().setLastBackup(now().toISOString().slice(0, 10)))} testID="backup-save" />
+        <Text style={type.tiny} testID="backup-last">{lastBackup ? t("bkl.last", { date: lastBackup }) : t("bkl.never")}</Text>
       </Section>
       <Section title={t("bk.restoreTitle")}>
         <Text style={type.small}>{t("bk.restoreBody")}</Text>

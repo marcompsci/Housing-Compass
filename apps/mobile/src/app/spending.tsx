@@ -2,7 +2,7 @@
  * Weekly spending: set a limit for day-to-day spending, log what you spend in a tap, see what's
  * left this week and how many weeks in a row you stayed under. Device-only.
  */
-import { monthRecap, SPEND_CATEGORIES, spendsCsv, underLimitStreak, weeklyReview, weekSpending, type SpendCategory } from "@housing-compass/core";
+import { budgetProgress, roundUps, spendHabits, weeklyTotals, monthRecap, SPEND_CATEGORIES, spendsCsv, underLimitStreak, weeklyReview, weekSpending, type SpendCategory } from "@housing-compass/core";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today, usd } from "../components/forms";
@@ -34,6 +34,13 @@ function Spending() {
   const [note, setNote] = useState("");
   const [cat, setCat] = useState<SpendCategory>("food");
   const recap = monthRecap(r.spends, td.slice(0, 7));
+  const weeks = weeklyTotals(r.spends, td, 8);
+  const maxWeek = Math.max(1, ...weeks.map((x) => x.cents), r.weeklyLimitCents ?? 0);
+  const budgets = budgetProgress(r.spends, r.categoryBudgets, td.slice(0, 7));
+  const ru = roundUps(r.spends, r.roundedSpendIds);
+  const habits = spendHabits(r.spends, td);
+  const [bCat, setBCat] = useState<SpendCategory>("coffee");
+  const [bAmt, setBAmt] = useState("");
   const pct = r.weeklyLimitCents ? Math.min(100, Math.round((w.spentCents / r.weeklyLimitCents) * 100)) : 0;
   return (
     <ScrollView contentContainerStyle={styles.wrap} testID="spending">
@@ -95,6 +102,69 @@ function Spending() {
         ))}
       </Section>
 
+      {r.spends.length ? (
+        <Section title={t("wk.chart")}>
+          <View style={styles.chart} testID="sp-chart" accessibilityLabel={t("wk.chart")}>
+            {weeks.map((w) => (
+              <View key={w.weekStart} style={styles.barWrap}>
+                <Text style={styles.barTop}>{w.cents ? usd(w.cents) : ""}</Text>
+                <View style={[styles.bar, { height: `${Math.max(2, Math.round((w.cents / maxWeek) * 100))}%`, backgroundColor: r.weeklyLimitCents && w.cents > r.weeklyLimitCents ? color.danger : color.brand }]} />
+                <Text style={styles.barLabel}>{w.weekStart.slice(5)}</Text>
+              </View>
+            ))}
+          </View>
+        </Section>
+      ) : null}
+
+      <Section title={t("cb.title")}>
+        <Text style={type.small}>{t("cb.body")}</Text>
+        {budgets.map((b) => (
+          <View key={b.category} style={{ gap: 2 }} testID="cb-row">
+            <Text style={[type.small, { fontWeight: "700", color: b.over ? color.danger : color.ink }]}>{t(b.over ? "cb.over" : "cb.line", { cat: t(`spc.${b.category}`), spent: usd(b.spentCents), budget: usd(b.budgetCents), amount: usd(Math.abs(b.leftCents)) })}</Text>
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${Math.min(100, b.pct)}%`, backgroundColor: b.over ? color.danger : b.pct > 80 ? color.warn : color.verified }]} />
+            </View>
+          </View>
+        ))}
+        <View style={formStyles.row}>
+          {SPEND_CATEGORIES.map((c) => (
+            <Chip key={c} label={t(`spc.${c}`)} selected={bCat === c} onPress={() => (setBCat(c), setBAmt(r.categoryBudgets[c] ? String(r.categoryBudgets[c]! / 100) : ""))} />
+          ))}
+        </View>
+        <View style={formStyles.row}>
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <Field label={t("cb.field", { cat: t(`spc.${bCat}`) })} value={bAmt} onChangeText={setBAmt} keyboardType="decimal-pad" testID="cb-amount" />
+          </View>
+          <Button kind="secondary" label={t("rent.saveSetup")} onPress={() => r.setCategoryBudget(bCat, toCents(bAmt) > 0 ? toCents(bAmt) : null)} testID="cb-save" />
+        </View>
+      </Section>
+
+      {ru.pendingCents ? (
+        <Section title={t("ru.title")}>
+          <Text style={type.body} testID="ru-pending">{t("ru.body", { amount: usd(ru.pendingCents), n: ru.count })}</Text>
+          {r.goals.length ? (
+            <View style={formStyles.row}>
+              {r.goals.slice(0, 4).map((g) => (
+                <Button key={g.id} kind="secondary" icon="arrow-forward-circle-outline" label={t("ru.move", { goal: g.name })} onPress={() => (r.contribute(g.id, ru.pendingCents, td), r.markRoundUpsMoved(ru.ids))} testID="ru-move" />
+              ))}
+            </View>
+          ) : (
+            <Text style={type.tiny}>{t("ru.noGoal")}</Text>
+          )}
+        </Section>
+      ) : null}
+
+      {habits.length ? (
+        <Section title={t("hb.title")}>
+          {habits.slice(0, 4).map((h) => (
+            <View key={h.category + h.note} style={{ gap: 2 }} testID="habit-row">
+              <Text style={[type.small, { fontWeight: "700" }]}>{t("hb.line", { what: h.note || t(`spc.${h.category}`), n: h.perWeek, amount: usd(h.monthlyCents) })}</Text>
+              <Text style={type.tiny}>{t("hb.half", { amount: usd(h.halfYearlyCents) })}</Text>
+            </View>
+          ))}
+        </Section>
+      ) : null}
+
       <Section title={t("sp.limitTitle")}>
         <Text style={type.small}>{t("sp.limitBody")}</Text>
         <View style={formStyles.row}>
@@ -136,5 +206,10 @@ const styles = StyleSheet.create({
   wrap: { padding: space.lg, gap: space.lg, paddingBottom: 60, maxWidth: 760, width: "100%", alignSelf: "center" },
   track: { height: 10, borderRadius: radius.md, backgroundColor: color.neutralSoft, overflow: "hidden" },
   fill: { height: "100%" },
+  chart: { height: 130, flexDirection: "row", alignItems: "flex-end", gap: 6 },
+  barWrap: { flex: 1, height: "100%", justifyContent: "flex-end", alignItems: "center", gap: 2 },
+  bar: { width: "70%", borderRadius: radius.sm },
+  barTop: { fontSize: 9, color: "#5B6472" },
+  barLabel: { fontSize: 9, color: "#5B6472" },
   row: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: color.line },
 });

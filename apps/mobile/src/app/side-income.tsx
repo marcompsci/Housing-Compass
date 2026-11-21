@@ -3,7 +3,7 @@
  * set-aside and the quarterly estimated-tax due dates. Device-only. General information,
  * not tax advice.
  */
-import { estimatedTaxDates, EXPENSE_CATEGORIES, IRS_MILEAGE_RATES, mileageRateFor, sideGoalProgress, sideIncomeSummary, sideProfit, type ExpenseCategory } from "@housing-compass/core";
+import { hourlyBySource, estimatedTaxDates, EXPENSE_CATEGORIES, IRS_MILEAGE_RATES, mileageRateFor, sideGoalProgress, sideIncomeSummary, sideProfit, type ExpenseCategory } from "@housing-compass/core";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Field, formStyles, toCents, today, usd } from "../components/forms";
@@ -258,6 +258,14 @@ function SideIncomeScreen() {
               </View>
             ))}
           {s.bySource.length > 1 ? s.bySource.map((b) => <KV key={b.source} k={b.source} v={usd(b.cents)} />) : null}
+          {hourlyBySource(r.sideIncome).length > 1 ? (
+            <View testID="side-best">
+              <Text style={[type.small, { fontWeight: "700" }]}>{t("bg.title", { source: hourlyBySource(r.sideIncome)[0]!.source })}</Text>
+              {hourlyBySource(r.sideIncome).map((b) => (
+                <KV key={b.source} k={`${b.source} (${b.hours} h)`} v={`${usd(b.perHourCents)}/h`} />
+              ))}
+            </View>
+          ) : null}
           <Button kind="secondary" icon="download-outline" label={t("side.export")} onPress={exportCsv} testID="side-export" />
         </Section>
       ) : null}

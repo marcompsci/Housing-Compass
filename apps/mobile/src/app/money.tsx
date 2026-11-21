@@ -3,7 +3,7 @@
  * snapshot (next payday and what to set aside, lowest balance ahead, debt-free date, goals)
  * and links to each tool. Everything is calculated on the phone.
  */
-import { allPaidStreak, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
+import { allPaidStreak, paydayChecklist, tipOfTheDay, setupProgress, weekSpending, CREDIT_CHECKLIST, billStatuses, paydays, safeToSpend, savingsWon, weekAhead, sideIncomeSummary, yearlyPlan, cashFlowForecast, emergencyFund, goalPlan, moneyCheck, paycheckPlan, payoffPlan, rentSummary, upcomingObligations } from "@housing-compass/core";
 import { useState } from "react";
 import { Field, toCents } from "../components/forms";
 import { askReminderPermission, remindersSupported } from "../lib/reminders";
@@ -14,6 +14,7 @@ import { Banner, Button, Icon, Section, Tag, type IconName, KV } from "../compon
 import { now } from "../config";
 import { useT } from "../i18n";
 import { LockGate } from "../lib/lock";
+import { PrivacyToggle } from "../components/PrivacyToggle";
 import { useRenter } from "../state/renter";
 import { HIT, color, radius, space, type } from "../theme";
 
@@ -39,6 +40,8 @@ function MoneyScreen() {
   const sts = r.startBalanceCents !== null ? safeToSpend({ balanceCents: r.startBalanceCents, obligations, nextPayday: nextPay, today: from }) : null;
   const week = weekAhead(obligations, from);
   const allPaid = allPaidStreak(r.bills, r.billPaid, n);
+  const pdc = r.pay ? paydayChecklist({ paydays: paydays(r.pay, from, 45), today: from, obligations }) : null;
+  const tip = tipOfTheDay(from);
   const [bal, setBal] = useState(r.startBalanceCents !== null ? String(r.startBalanceCents / 100) : "");
   const [q, setQ] = useState("");
   const wk = weekSpending(r.spends, r.weeklyLimitCents, from);
@@ -113,6 +116,14 @@ function MoneyScreen() {
         );
       })()}
 
+      <View style={[formStyles.row, { alignItems: "center" }]}>
+        <View style={[formStyles.card, { flex: 1, flexDirection: "row", gap: 8, alignItems: "flex-start" }]} testID="tip">
+          <Icon name="bulb-outline" size={20} tint={color.warn} />
+          <Text style={[type.small, { flex: 1 }]}>{t(`tip.${tip}`)}</Text>
+        </View>
+        <PrivacyToggle />
+      </View>
+
       <Section title={t("today.title")}>
         <View style={[styles.tile, { flexBasis: "auto" }, sts?.shortCents ? { backgroundColor: color.dangerSoft } : { backgroundColor: color.verifiedSoft }]} testID="safe-to-spend">
           <Text style={type.tiny}>{t("today.safe")}</Text>
@@ -122,7 +133,12 @@ function MoneyScreen() {
         <Text style={[type.small, { fontWeight: "700" }]}>{week.items.length ? t("today.week", { amount: usd(week.totalCents), n: week.items.length }) : t("today.weekClear")}</Text>
         <View testID="week-ahead">
           {week.items.map((o) => (
-            <KV key={o.id + o.dueDate} k={`${o.dueDate === from ? t("today.today") : o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
+            <View key={o.id + o.dueDate} style={formStyles.row}>
+              <View style={{ flex: 1 }}>
+                <KV k={`${o.dueDate === from ? t("today.today") : o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
+              </View>
+              {o.kind === "bill" ? <Button kind="ghost" icon="checkmark-circle-outline" label={t("today.paid")} onPress={() => r.markBillPaid(o.id.split(":")[1]!, o.dueDate.slice(0, 7))} testID="week-paid" /> : null}
+            </View>
           ))}
         </View>
         <View style={formStyles.row}>
@@ -136,6 +152,15 @@ function MoneyScreen() {
           <Button style={{ flex: 1 }} kind="secondary" icon="cart-outline" label={r.weeklyLimitCents ? t("today.spendLeft", { amount: usd(wk.leftCents ?? 0) }) : t("sp.title")} onPress={() => router.push("/spending")} testID="today-spending" />
         </View>
         {allPaid ? <Tag label={t("today.allPaid", { n: allPaid })} tone="good" /> : null}
+        {pdc ? (
+          <View style={[formStyles.card, { backgroundColor: color.brandSoft }]} testID="payday-list">
+            <Text style={type.h3}>{t("pd.title", { date: pdc.payday })}</Text>
+            <Text style={type.small}>{pdc.items.length ? t("pd.body", { n: pdc.items.length, amount: usd(pdc.totalCents), until: pdc.until }) : t("pd.none")}</Text>
+            {pdc.items.map((o) => (
+              <KV key={o.id} k={`${o.dueDate} · ${o.name}`} v={usd(o.amountCents)} />
+            ))}
+          </View>
+        ) : null}
         <Text style={type.tiny}>{t("today.note")}</Text>
       </Section>
 

@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useRenter } from "../state/renter";
 import { HIT, color, radius, type } from "../theme";
 
 /** A labeled text input. The label is also the accessibility label. */
@@ -17,7 +18,8 @@ export const toCents = (s: string) => {
   const n = Number(s.replace(/[$,\s]/g, ""));
   return Number.isFinite(n) ? Math.round(n * 100) : NaN;
 };
-export const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
+/** Formats cents as dollars; shows "$•••" while privacy mode (hide amounts) is on. */
+export const usd = (cents: number) => (useRenter.getState().hideAmounts ? "$•••" : `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`);
 export const today = (d: Date) => d.toISOString().slice(0, 10);
 
 export const formStyles = StyleSheet.create({

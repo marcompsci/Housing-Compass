@@ -6,7 +6,7 @@
  * Export it yourself (CSV / text) when you want to share it with a landlord or rent-reporting service.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
+import { rememberSearch, type Bill, type ConditionEntry, type Bureau, type BillHistory, type CategoryBudgets, recordBillChange, type SpendCategory, type Challenge, type Contribution, type NetWorthSnap, upsertSnapshot, type ScoreEntry, type Spend, type CreditStep, type Debt, type Dispute, type Inquiry, type Iou, type Negotiation, type SideExpense, type MileageEntry, type SideIncome, type YearlyExpense, type PaySetup, type RenterBackup, type RentPayment, type RentSetup, type SavingsGoal, type WaitlistEntry } from "@housing-compass/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { uuid } from "./applications";
@@ -68,6 +68,15 @@ interface RenterState {
   netWorth: NetWorthSnap[];
   otherAssetsCents: number | null;
   challenge: Challenge | null;
+  categoryBudgets: CategoryBudgets;
+  billHistory: BillHistory;
+  roundedSpendIds: string[];
+  lastBackupAt: string | null;
+  hideAmounts: boolean;
+  setCategoryBudget(c: SpendCategory, cents: number | null): void;
+  markRoundUpsMoved(ids: string[]): void;
+  setLastBackup(date: string): void;
+  setHideAmounts(v: boolean): void;
   setBillNote(key: string, note: string): void;
   saveNetWorth(s: NetWorthSnap): void;
   setOtherAssets(c: number | null): void;
@@ -143,7 +152,7 @@ interface RenterState {
   clearAll(): void;
 }
 
-const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null };
+const EMPTY = { rentSetup: null, payments: [], remindersOn: false, moveIn: null, condition: [], moveOut: null, waitlists: [], recentSearches: [], bills: [], billPaid: {}, takeHomeCents: null, photos: {}, lockOn: false, pay: null, startBalanceCents: null, debts: [], goals: [], unusedSubs: [], creditDone: [], setupDone: false, emergencyCents: null, splitPct: { goals: 50, debt: 30 }, weeklyCheckIn: false, sideIncome: [], mileage: [], sideSetAsidePct: 25, yearly: [], contribs: [], sideExpenses: [], sideGoalCents: null, negotiations: [], reportChecks: [], inquiries: [], disputes: [], ious: [], hourlyCents: null, weeklyLimitCents: null, spends: [], scores: [], billNotes: {}, netWorth: [], otherAssetsCents: null, challenge: null, categoryBudgets: {}, billHistory: {}, roundedSpendIds: [], lastBackupAt: null, hideAmounts: false };
 
 export const useRenter = create<RenterState>()(
   persist(
@@ -165,7 +174,20 @@ export const useRenter = create<RenterState>()(
       },
       clearRecentSearches: () => set({ recentSearches: [] }),
       addBill: (b) => set({ bills: [...get().bills, { ...b, id: uuid() }] }),
-      updateBill: (id, p) => set({ bills: get().bills.map((b) => (b.id === id ? { ...b, ...p } : b)) }),
+      updateBill: (id, p) => {
+        const old = get().bills.find((b) => b.id === id);
+        const hist = old && p.amountCents !== undefined ? recordBillChange(get().billHistory, id, old.amountCents, p.amountCents, new Date().toISOString().slice(0, 10)) : get().billHistory;
+        set({ bills: get().bills.map((b) => (b.id === id ? { ...b, ...p } : b)), billHistory: hist });
+      },
+      setCategoryBudget: (c, cents) => {
+        const b = { ...get().categoryBudgets };
+        if (cents && cents > 0) b[c] = cents;
+        else delete b[c];
+        set({ categoryBudgets: b });
+      },
+      markRoundUpsMoved: (ids) => set({ roundedSpendIds: [...get().roundedSpendIds, ...ids].slice(-5000) }),
+      setLastBackup: (lastBackupAt) => set({ lastBackupAt }),
+      setHideAmounts: (hideAmounts) => set({ hideAmounts }),
       removeBill: (id) => {
         const { [id]: _gone, ...billPaid } = get().billPaid;
         set({ bills: get().bills.filter((b) => b.id !== id), billPaid, unusedSubs: get().unusedSubs.filter((x) => x !== id) });
@@ -280,6 +302,11 @@ export const useRenter = create<RenterState>()(
           netWorth: b.data.netWorth ?? [],
           otherAssetsCents: b.data.otherAssetsCents ?? null,
           challenge: b.data.challenge ?? null,
+          categoryBudgets: b.data.categoryBudgets ?? {},
+          billHistory: b.data.billHistory ?? {},
+          roundedSpendIds: b.data.roundedSpendIds ?? [],
+          lastBackupAt: b.data.lastBackupAt ?? null,
+          hideAmounts: b.data.hideAmounts ?? false,
           setupDone: true,
         }),
       clearAll: () => set(EMPTY),

@@ -3,7 +3,7 @@
  * and compare avalanche (highest rate first, least interest) with snowball (smallest balance
  * first, quickest wins). Device-only. General information, not financial advice.
  */
-import { cardUtilization, debtProgress, extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
+import { monthlyInterest, strategyCompare, cardUtilization, debtProgress, extraPaymentImpact, paymentForMonths, payoffDates, payoffPlan, type Debt } from "@housing-compass/core";
 import { now } from "../config";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -54,6 +54,27 @@ function DebtsScreen() {
           </View>
           {debtProgress(debts).paidOff ? <Tag label={t("dp.paidOff", { n: debtProgress(debts).paidOff })} tone="good" /> : null}
         </View>
+      ) : null}
+      {debts.some((d) => d.balanceCents > 0) ? (
+        <View style={[formStyles.card, { borderColor: color.warn }]} testID="debt-interest">
+          <Text style={type.h3}>{t("mi.title", { amount: usd(monthlyInterest(debts).totalCents) })}</Text>
+          {monthlyInterest(debts).rows.map((x) => (
+            <KV key={x.id} k={x.name} v={t("mi.line", { amount: usd(x.cents) })} />
+          ))}
+        </View>
+      ) : null}
+      {debts.filter((d) => d.balanceCents > 0).length > 1 ? (
+        (() => {
+          const c = strategyCompare(debts, extraC);
+          return (
+            <View style={formStyles.card} testID="debt-strategy">
+              <Text style={type.h3}>{t("sc2.title")}</Text>
+              <KV k={t("sc2.avalanche")} v={c.avalanche.feasible ? t("sc2.line", { n: c.avalanche.months, amount: usd(c.avalanche.interestCents) }) : "—"} />
+              <KV k={t("sc2.snowball")} v={c.snowball.feasible ? t("sc2.line", { n: c.snowball.months, amount: usd(c.snowball.interestCents) }) : "—"} />
+              <Text style={type.small}>{c.interestDiffCents > 0 ? t("sc2.diff", { amount: usd(c.interestDiffCents), n: c.snowball.firstPayoffMonth ?? 0 }) : t("sc2.same")}</Text>
+            </View>
+          );
+        })()
       ) : null}
       {cardUtilization(debts).rows.length ? (
         <Section title={t("cu.title")}>

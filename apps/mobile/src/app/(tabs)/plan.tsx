@@ -2,7 +2,7 @@
  * My plan: one list of what's coming up — rent due, tours, application deadlines and
  * follow-ups, the deposit-return deadline and waitlist check-ins — plus the renter tools.
  */
-import { atRiskObligations, billPlanItems, billPromoItems, growPlanItems, creditPlanItems, billStatuses, buildPlan, cashFlowForecast, moneyPlanItems, paycheckPlan, rentSummary, taxPlanItems, upcomingObligations, yearlyPlanItems, type PlanItem } from "@housing-compass/core";
+import { atRiskObligations, billPlanItems, billPromoItems, growPlanItems, habitPlanItems, paydayChecklist, paydays as paydaysFor, creditPlanItems, billStatuses, buildPlan, cashFlowForecast, moneyPlanItems, paycheckPlan, rentSummary, taxPlanItems, upcomingObligations, yearlyPlanItems, type PlanItem } from "@housing-compass/core";
 import { useEffect, useState } from "react";
 import { authenticate, canUseLock } from "../../lib/lock";
 import { router } from "expo-router";
@@ -12,6 +12,7 @@ import { usd } from "../../components/forms";
 import { Button, Icon, Section, Tag, type IconName } from "../../components/ui";
 import { now } from "../../config";
 import { useT } from "../../i18n";
+import { PrivacyToggle } from "../../components/PrivacyToggle";
 import { useApplications } from "../../state/applications";
 import { useConversations } from "../../state/conversations";
 import { useRenter } from "../../state/renter";
@@ -34,6 +35,8 @@ const KIND_ICON: Record<PlanItem["kind"], IconName> = {
   bill_promo: "pricetag-outline",
   challenge: "calendar-number-outline",
   net_worth: "trending-up-outline",
+  budget: "pie-chart-outline",
+  backup: "save-outline",
 };
 
 export default function Plan() {
@@ -49,7 +52,7 @@ export default function Plan() {
     moveOut: r.moveOut,
     waitlists: r.waitlists,
     now: n,
-    extra: [...billPlanItems(billStatuses(r.bills, r.billPaid, n), n), ...moneyItems(), ...taxPlanItems(n, r.sideIncome.length > 0), ...yearlyPlanItems(r.yearly, n), ...creditPlanItems({ reportChecks: r.reportChecks, disputes: r.disputes, debts: r.debts, now: n }), ...billPromoItems(r.bills, n), ...growPlanItems({ challenge: r.challenge, netWorth: r.netWorth, hasMoneySetup: r.startBalanceCents !== null || r.debts.length > 0 || r.goals.length > 0, now: n })],
+    extra: [...billPlanItems(billStatuses(r.bills, r.billPaid, n), n), ...moneyItems(), ...taxPlanItems(n, r.sideIncome.length > 0), ...yearlyPlanItems(r.yearly, n), ...creditPlanItems({ reportChecks: r.reportChecks, disputes: r.disputes, debts: r.debts, now: n }), ...billPromoItems(r.bills, n), ...growPlanItems({ challenge: r.challenge, netWorth: r.netWorth, hasMoneySetup: r.startBalanceCents !== null || r.debts.length > 0 || r.goals.length > 0, now: n }), ...habitPlanItems({ spends: r.spends, budgets: r.categoryBudgets, lastBackupAt: r.lastBackupAt, hasData: r.bills.length + r.debts.length + r.goals.length + r.spends.length > 0, payday: r.pay ? paydayChecklist({ paydays: paydaysFor(r.pay, n.toISOString().slice(0, 10), 45), today: n.toISOString().slice(0, 10), obligations: upcomingObligations({ rent: r.rentSetup, rentPayments: r.payments, bills: r.bills, billPaid: r.billPaid, from: n.toISOString().slice(0, 10), days: 45 }) }) : null, now: n })],
   });
   function moneyItems(): PlanItem[] {
     const from = n.toISOString().slice(0, 10);
@@ -73,7 +76,7 @@ export default function Plan() {
     const c = p.detailCode;
     const txt =
       c === "in_days" ? (p.kind === "deposit_return" ? t("move.daysLeft", { n: p.n ?? 0 }) : t("rent.dueIn", { n: p.n ?? 0 })) : c === "due_today" ? t("rent.dueToday") : c === "days_late" ? t("rent.lateBy", { n: p.n ?? 0 }) : c === "overdue_days" ? t("move.overdue", { n: p.n ?? 0 })
-      : c === "check_in_soon" ? t("wl.soon") : c === "check_in_overdue" ? t("wl.overdue") : c === "official_application" ? t("plan.official") : c === "your_reminder" ? t("plan.yourReminder") : c === "autopay" ? t("plan.autopay") : c === "set_aside" ? (p.n ? t("money.setAside", { amount: usd(p.n) }) : t("pay.nothingDue")) : c === "to_go" ? t("plan.toGo", { amount: usd(p.n ?? 0) }) : c === "at_risk" ? t("plan.atRisk") : c === "tax_quarter" ? t("plan.taxQuarter") : c === "challenge_week" ? t("plan.challenge") : c === "net_worth_update" ? t("plan.netWorth") : c === "promo_call" ? ((p.n ?? 0) < 0 ? t("plan.promoPassed") : t("plan.promoCall", { n: p.n ?? 0 })) : c === "report_check" ? t("plan.reportCheck") : c === "dispute_due" ? ((p.n ?? 0) < 0 ? t("plan.disputeLate") : t("plan.disputeDue", { n: p.n ?? 0 })) : c === "pay_before_close" ? t("plan.payBeforeClose") : c === "promo_end" ? t("plan.promoEnd", { amount: usd(p.n ?? 0) }) : c === "yearly" ? (p.n ? t("plan.toGo", { amount: usd(p.n) }) : t("yr.ready")) : p.detail;
+      : c === "check_in_soon" ? t("wl.soon") : c === "check_in_overdue" ? t("wl.overdue") : c === "official_application" ? t("plan.official") : c === "your_reminder" ? t("plan.yourReminder") : c === "autopay" ? t("plan.autopay") : c === "set_aside" ? (p.n ? t("money.setAside", { amount: usd(p.n) }) : t("pay.nothingDue")) : c === "to_go" ? t("plan.toGo", { amount: usd(p.n ?? 0) }) : c === "at_risk" ? t("plan.atRisk") : c === "tax_quarter" ? t("plan.taxQuarter") : c === "over_budget" ? t("plan.overBudget", { amount: usd(p.n ?? 0) }) : c === "backup_due" ? t("plan.backup") : c === "payday_list" ? t("plan.payday", { amount: usd(p.n ?? 0) }) : c === "challenge_week" ? t("plan.challenge") : c === "net_worth_update" ? t("plan.netWorth") : c === "promo_call" ? ((p.n ?? 0) < 0 ? t("plan.promoPassed") : t("plan.promoCall", { n: p.n ?? 0 })) : c === "report_check" ? t("plan.reportCheck") : c === "dispute_due" ? ((p.n ?? 0) < 0 ? t("plan.disputeLate") : t("plan.disputeDue", { n: p.n ?? 0 })) : c === "pay_before_close" ? t("plan.payBeforeClose") : c === "promo_end" ? t("plan.promoEnd", { amount: usd(p.n ?? 0) }) : c === "yearly" ? (p.n ? t("plan.toGo", { amount: usd(p.n) }) : t("yr.ready")) : p.detail;
     return `${p.date} · ${txt}`;
   };
   const rs = r.rentSetup ? rentSummary(r.rentSetup, r.payments, n) : null;
@@ -94,9 +97,12 @@ export default function Plan() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color.bg }} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.wrap} testID="plan">
-        <Text style={type.title} accessibilityRole="header">
-          {t("plan.title")}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={[type.title, { flex: 1 }]} accessibilityRole="header">
+            {t("plan.title")}
+          </Text>
+          <PrivacyToggle />
+        </View>
         <Text style={type.small}>{t("plan.intro")}</Text>
 
         <Section title={t("plan.next30")}>

@@ -986,7 +986,7 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   await page.goto(`${base}/spending`);
   await page.getByTestId("sp-limit").fill("100");
   await page.getByTestId("sp-limit-save").click();
-  await page.getByRole("button", { name: "Coffee" }).click();
+  await page.getByRole("button", { name: "Coffee" }).first().click();
   await page.getByTestId("sp-amount").fill("30");
   await page.getByTestId("sp-add").click();
   await page.getByTestId("sp-row").waitFor();
@@ -1088,13 +1088,64 @@ function backupSummaryLog(s) { return `${s.debts?.length} debts, ${s.goals?.leng
   check((await page.getByTestId("lf-company").count()) === 1, "late fee waiver letter can be made");
 
   await page.goto(`${base}/spending`);
-  await page.getByRole("button", { name: "Shopping" }).click();
+  await page.getByRole("button", { name: "Shopping" }).first().click();
   await page.getByTestId("sp-amount").fill("20");
   await page.getByTestId("sp-add").click();
   await page.getByTestId("sp-recap").waitFor();
   check(/Shopping/.test(await page.getByTestId("sp-recap").innerText()), "spending recap by category");
   await page.getByTestId("sp-recap").scrollIntoViewIfNeeded();
   await shot("81-spending-recap");
+}
+
+// ── v0.24: tip, privacy mode, mark paid from Today, weekly chart, category budgets, round-ups, bill yearly cost, debt interest & strategies, backup reminder
+{
+  await page.goto(`${base}/money`);
+  await page.getByTestId("tip").waitFor();
+  check((await page.getByTestId("tip").innerText()).length > 20, "tip of the day shown");
+  await page.getByTestId("privacy-toggle").first().click();
+  check((await page.getByTestId("safe-to-spend").innerText()).includes("$•••"), "privacy mode hides amounts");
+  await shot("82-privacy");
+  await page.getByTestId("privacy-toggle").first().click();
+  check(!(await page.getByTestId("safe-to-spend").innerText()).includes("$•••"), "privacy mode turns off");
+  const paidBefore = await page.getByTestId("week-paid").count();
+  if (paidBefore) {
+    await page.getByTestId("week-paid").first().click();
+    check((await page.getByTestId("week-paid").count()) === paidBefore - 1, "bill marked paid from the Today card");
+  }
+
+  await page.goto(`${base}/spending`);
+  await page.getByRole("button", { name: "Coffee" }).first().click();
+  await page.getByTestId("sp-amount").fill("12.50");
+  await page.getByTestId("sp-add").click();
+  await page.getByTestId("sp-chart").waitFor();
+  check((await page.getByTestId("sp-chart").count()) === 1, "weekly spending chart shown");
+  await page.getByTestId("cb-amount").fill("10");
+  await page.getByTestId("cb-save").click();
+  check(/Coffee: \$[\d.]+ of \$10 · \$[\d.]+ over/.test(await page.getByTestId("cb-row").first().innerText()), "category budget shows overspending");
+  check(/adds up to \$0?\.50|adds up to 50¢|adds up to \$0\.5/.test(await page.getByTestId("ru-pending").innerText()), "round-ups add up");
+  await shot("83-budgets");
+  await page.getByTestId("ru-move").first().click();
+  check((await page.getByTestId("ru-pending").count()) === 0, "round-ups moved to a goal");
+
+  await page.goto(`${base}/plan`);
+  await page.getByTestId("plan-item").first().waitFor();
+  check((await page.getByText(/Over by \$[\d.,]+ this month/).count()) >= 1, "over-budget item in My plan");
+  check((await page.getByText(/save a backup file/).count()) >= 1, "backup reminder in My plan");
+
+  await page.goto(`${base}/backup`);
+  await page.getByTestId("backup-save").click();
+  await page.getByText("Last backup: 2026-11-05").waitFor();
+  check(true, "last backup date recorded");
+
+  await page.goto(`${base}/bills`);
+  await page.getByTestId("yearly-cost").waitFor();
+  check(/\/yr/.test(await page.getByTestId("yearly-cost").innerText()), "yearly cost of bills shown");
+
+  await page.goto(`${base}/debts`);
+  await page.getByTestId("debt-interest").waitFor();
+  check(/\/mo/.test(await page.getByTestId("debt-interest").innerText()), "monthly interest per debt shown");
+  if (await page.getByTestId("debt-strategy").count()) check(/Highest rate first/.test(await page.getByTestId("debt-strategy").innerText()), "avalanche vs snowball compared");
+  await shot("84-debt-interest");
 }
 
 // ── v0.15: Spanish filters and message checker

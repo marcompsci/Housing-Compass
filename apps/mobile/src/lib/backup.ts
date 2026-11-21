@@ -44,6 +44,11 @@ export function makeBackup(now: Date): RenterBackup {
       netWorth: r.netWorth,
       otherAssetsCents: r.otherAssetsCents,
       challenge: r.challenge,
+      categoryBudgets: r.categoryBudgets,
+      billHistory: r.billHistory,
+      roundedSpendIds: r.roundedSpendIds,
+      lastBackupAt: r.lastBackupAt,
+      hideAmounts: r.hideAmounts,
     },
   };
 }

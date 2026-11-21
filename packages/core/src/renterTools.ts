@@ -195,7 +195,7 @@ export function waitlistAttention(w: WaitlistEntry, now: Date): "check_in_overdu
 
 // ───────── "What's next" plan ─────────
 export interface PlanItem {
-  kind: "rent_due" | "tour" | "app_deadline" | "deposit_return" | "waitlist_check_in" | "follow_up" | "bill_due" | "payday" | "goal_date" | "at_risk" | "tax_due" | "yearly_due" | "credit" | "bill_promo" | "challenge" | "net_worth";
+  kind: "rent_due" | "tour" | "app_deadline" | "deposit_return" | "waitlist_check_in" | "follow_up" | "bill_due" | "payday" | "goal_date" | "at_risk" | "tax_due" | "yearly_due" | "credit" | "bill_promo" | "challenge" | "net_worth" | "budget" | "backup" | "payday";
   date: string;
   title: string;
   detail: string;
@@ -203,7 +203,7 @@ export interface PlanItem {
   href: string;
   urgent: boolean;
   /** Machine-readable detail so the app can translate it (detail stays as English text). */
-  detailCode?: "in_days" | "due_today" | "days_late" | "overdue_days" | "check_in_soon" | "check_in_overdue" | "official_application" | "your_reminder" | "autopay" | "set_aside" | "to_go" | "at_risk" | "tax_quarter" | "yearly" | "report_check" | "dispute_due" | "promo_end" | "pay_before_close" | "promo_call" | "challenge_week" | "net_worth_update";
+  detailCode?: "in_days" | "due_today" | "days_late" | "overdue_days" | "check_in_soon" | "check_in_overdue" | "official_application" | "your_reminder" | "autopay" | "set_aside" | "to_go" | "at_risk" | "tax_quarter" | "yearly" | "report_check" | "dispute_due" | "promo_end" | "pay_before_close" | "promo_call" | "challenge_week" | "net_worth_update" | "over_budget" | "backup_due" | "payday_list";
   n?: number;
   /** Exact start time (ISO), for items that have one, so the app can show it in local time. */
   at?: string;
