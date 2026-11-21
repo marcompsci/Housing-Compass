@@ -46,6 +46,13 @@
 ## Done in v0.23
 - Card use per card, proof of payment, autopay check, late-fee letter, net worth, spending categories and recap, 52-week challenge, setup progress
 
+## Done in v0.24
+- #40 privacy mode, #41 weekly spending chart; plus budgets, round-ups, habits, payday checklist, bill price history, debt interest and strategy compare, goal ETA, backup reminder
+
+## Next ideas (after v0.24)
+42. Native-speaker review of the 12 daily tips
+43. Home-screen widget (needs a native extension)
+
 ## Next ideas (after v0.23)
 40. Privacy mode that hides amounts on screen
 41. Charts for spending by week (needs a small chart component)

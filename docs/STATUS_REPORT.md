@@ -1,4 +1,41 @@
-# Status report — v0.23 (2026-11-20): 20 more phases — build credit and net worth
+# Status report — v0.24 (2026-11-20): 25 more phases — habits, budgets and peace of mind
+
+| # | Phase | What it does | Where |
+|---|---|---|---|
+| 1 | Privacy mode | Hides every dollar amount as $••• across the money screens. | `usd` in `components/forms.tsx` |
+| 2 | Privacy toggle | Eye button on the money hub and My plan. | `components/PrivacyToggle.tsx` |
+| 3 | Tip of the day | 12 short tips written for the app, rotating daily, in en/es/zh. | `tipOfTheDay` |
+| 4 | Mark paid from Today | Check off a bill right from the week-ahead list. | Money → Today |
+| 5 | Payday checklist | On payday or the day before: what's due before the next payday and the total. | `paydayChecklist` |
+| 6 | Payday in My plan | Same checklist as a plan item. | `habitPlanItems` |
+| 7 | Weekly chart | Last 8 weeks of spending; weeks over the limit in red. | `weeklyTotals`; Weekly spending |
+| 8 | Category budgets | Optional monthly budget per category. | `budgetProgress` |
+| 9 | Budget bars | Spent vs budget, left or over. | Weekly spending |
+| 10 | Over budget in My plan | Category over its budget this month. | `habitPlanItems` |
+| 11 | Round-ups | Each logged spend rounded up to the next dollar. | `roundUps` |
+| 12 | Move round-ups | One tap moves them into a savings goal. | Weekly spending |
+| 13 | Habits | Repeated spends in the last 30 days with monthly cost. | `spendHabits` |
+| 14 | Cut it in half | What halving a habit saves in a year. | `spendHabits` |
+| 15 | Bill price history | Old and new amounts recorded when a bill's amount changes. | `recordBillChange` |
+| 16 | Price trend | 'was $X (+Y%)' on each bill that changed. | `billPriceTrend` |
+| 17 | Yearly bill cost | Each bill × 12 and the total. | `yearlyBillCost` |
+| 18 | Monthly interest | What each debt costs in interest per month. | `monthlyInterest` |
+| 19 | Avalanche vs snowball | Months, interest and first payoff for each method. | `strategyCompare` |
+| 20 | Best-paying gig | Side income per hour by source. | `hourlyBySource` |
+| 21 | Goal ETA | Finish date at your last-8-weeks saving pace. | `goalEta`; Savings goals |
+| 22 | Last backup | Date of the last saved backup. | Backup |
+| 23 | Backup reminder | My plan nudges after 30 days without a backup. | `habitPlanItems` |
+| 24 | Backup, privacy, translations | New data in backups (strict schema), export, clear, Face ID lock; 48 new strings in en/es/zh. | `RenterBackupSchema` |
+| 25 | Tests | 12 new core tests; 14 new browser checks. | `test/v024.test.ts`, e2e |
+
+### Tests (all passing)
+- Core: 279 unit tests
+- Database: 22 SQL sections + 5 contract tests (no schema change)
+- Browser e2e: 195 checks, screenshots 82–84
+
+---
+
+## Previous: v0.23 (2026-11-20): 20 more phases — build credit and net worth
 
 | # | Phase | What it does | Where |
 |---|---|---|---|

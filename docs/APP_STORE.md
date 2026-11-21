@@ -1,6 +1,6 @@
 # App Store listing draft — Housing Compass
 
-Draft text for App Store Connect. Every claim matches what the app does today (v0.23). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
+Draft text for App Store Connect. Every claim matches what the app does today (v0.24). Check before submitting: screenshots must come from the current build, and the privacy answers must match `app.json` → `ios.privacyManifests` (a core test keeps those in sync).
 
 ## Name and subtitle
 - **Name:** Housing Compass
@@ -53,7 +53,8 @@ KNOW WHAT'S SAFE TO SPEND
 • Set a weekly spending limit, log spends in a tap and keep an under-limit streak.
 • Split a tax refund or bonus wisely with the windfall planner.
 • Track your net worth month by month, and take the 52-week savings challenge.
-• See spending by category compared with last month.
+• See spending by category compared with last month, set monthly category budgets, and round up spends into savings.
+• Hide amounts with one tap when you're in public.
 • See each bill in hours of work.
 
 EARN MORE AND KEEP MORE
